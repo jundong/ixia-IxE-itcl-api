@@ -721,7 +721,7 @@ package provide Ixia 1.0
 #Desc: set packet value
 #Args: 
 #    myValue eg:ff ff ff ff ff ff 00 00 00 00 00 01 08 00 45 00
-#         pkt_len default -1
+#    pkt_len default -1
 #Usage: port1 SetCustomPkt {ff ff ff ff ff ff 00 00 00 00 00 01 08 00 45 00}
 ###########################################################################################
 ::itcl::body CIxiaPortETH::SetCustomPkt {{myValue 0} {pkt_len -1}} {
@@ -729,15 +729,13 @@ package provide Ixia 1.0
     set retVal $::CIxia::gIxia_OK
     puts "SetCustomPkt: $myValue  $pkt_len"    
     set myvalue $myValue
-    
+       
     if {[llength $pkt_len] == 1} {
         if [string match $pkt_len "-1"] {
             set pkt_len [llength $myvalue]
         }
-    
         stream config -framesize [expr $pkt_len + 4]
         stream config -frameSizeType sizeFixed
-    
     } else {
         stream config -framesize 318
         stream config -frameSizeType sizeRandom
@@ -751,30 +749,40 @@ package provide Ixia 1.0
     if { $pkt_len > [llength $myvalue] } {
         set patch_value [string repeat "00 " [expr $pkt_len - [llength $myvalue]]]
         set myvalue [concat $myvalue $patch_value]
+        puts "$myvalue"
     }
     
-    tableUdf setDefault
-    tableUdf clearColumns
-    tableUdf config -enable 1
-    tableUdfColumn setDefault
-    tableUdfColumn config -name custom_pkt
-    tableUdfColumn config -size $pkt_len
-    tableUdfColumn config -offset 0
-    tableUdfColumn config -formatType formatTypeHex
-    tableUdfColumn config -customFormat "8b;3d;16x"
-    tableUdf addColumn
-    
-    set rowValueList ""
-    lappend rowValueList $myvalue
-    
-    tableUdf addRow $rowValueList
-    tableUdf set $_chassis $_card $_port
-    
-    if {[string match [config_stream -StreamId $_streamid] $::CIxia::gIxia_ERR]} {
-        set retVal $::CIxia::gIxia_ERR
+    if { [llength $myvalue] >= 12} {
+        stream config -da [lrange $myvalue 0 5]
+        stream config -sa [lrange $myvalue 6 11]
+    } elseif { [llength $myvalue] > 6 } {
+        stream config -da [lrange $myvalue 0 5]
+        for {set i 0} {$i < [llength $myvalue] - 7} {incr i} {
+            set Dstmac [lreplace $Dstmac $i $i [lindex $myvalue $i]]
+        }
+        stream config -sa $Dstmac
+    } else {
+        for {set i 0} { $i < [llength $myvalue]} {incr i} {
+            set Srcmac [lreplace $Srcmac $i $i [lindex $myvalue $i]]
+        }
+        stream config -da $Srcmac
     }
-    if {[string match [config_port -ConfigType write] $::CIxia::gIxia_ERR]} {
+    
+    stream config -patternType repeat
+    stream config -dataPattern userpattern
+    stream config -frameType "86 DD"
+    if { [llength $myvalue] >= 12 } {
+        stream config -pattern [lrange $myvalue 12 end]
+    } 
+           
+    
+    if {[string match [config_stream -StreamId 1] ]} {
+         set retVal $::CIxia::gIxia_ERR
+         set retVal 0
+    }
+    if {[string match [config_port -ConfigType write] ]} {
         set retVal $::CIxia::gIxia_ERR
+        set retVal 0
     }
 
     return $retVal
@@ -782,12 +790,10 @@ package provide Ixia 1.0
 
 ###########################################################################################
 #@@Proc
-#Name: SetCustomPkt
+#Name: SetEthIIPkt
 #Desc: set packet value
 #Args: 
-#    myValue eg:ff ff ff ff ff ff 00 00 00 00 00 01 08 00 45 00
-#         pkt_len default -1
-#Usage: port1 SetCustomPkt {ff ff ff ff ff ff 00 00 00 00 00 01 08 00 45 00}
+#Usage: port1 SetEthIIPkt {ff ff ff ff ff ff 00 00 00 00 00 01 08 00 45 00}
 ###########################################################################################
 ::itcl::body CIxiaPortETH::SetEthIIPkt { args } {
     set PacketLen 60
@@ -1052,9 +1058,9 @@ package provide Ixia 1.0
         puts "CreateCustomStream has illegal parameter! $val"
         return $::CIxia::gIxia_ERR
     }
-    if {[llength $FrameLen]==2} {
-        set FrameLen [expr ([llength $FrameLen 0] + [llength $FrameLen 1])/2]
-    }
+    #if {[llength $FrameLen]==2} {
+    #    set FrameLen [expr ([llength $FrameLen 0] + [llength $FrameLen 1])/2]
+    #}
     set framelen $FrameLen
     if { $FrameRate != 0 } {
         set utilization $FrameRate
