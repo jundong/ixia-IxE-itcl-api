@@ -772,15 +772,32 @@ package provide Ixia 1.0
     stream config -dataPattern userpattern
     stream config -frameType "86 DD"
     if { [llength $myvalue] >= 12 } {
-        stream config -pattern [lrange $myvalue 12 end]
-    } 
-           
+        if { [lindex $myvalue 12] == "81" && [lindex $myvalue 13] == "00"} {
+            set vlanOpts  0x[lindex $myvalue 14][lindex $myvalue 15]
+            protocol config -enable802dot1qTag vlanSingle
+            vlan setDefault
+            # 12 bits Vlan ID
+            vlan config -vlanID                 [expr $vlanOpts & 0x0FFF]
+            # 3 bits Priority
+            vlan config -userPriority           [expr $vlanOpts >> 13]
+            if {[vlan set $_chassis $_card $_port]} {
+                errorMsg "Error calling vlan set $_chassis $_card $_port"
+                set retCode $::CIxia::gIxia_ERR
+            }
+            
+            stream config -frameType "[lindex $myvalue 16] [lindex $myvalue 17]"
+            stream config -pattern [lrange $myvalue 16 end]
+        } else {
+            stream config -frameType "[lindex $myvalue 12] [lindex $myvalue 13]"
+            stream config -pattern [lrange $myvalue 12 end]
+        }
+    }      
     
-    if {[string match [config_stream -StreamId 1] ]} {
-         set retVal $::CIxia::gIxia_ERR
-         set retVal 0
+    if {[string match [config_stream -StreamId 1] $::CIxia::gIxia_ERR]} {
+        set retVal $::CIxia::gIxia_ERR
+        set retVal 0
     }
-    if {[string match [config_port -ConfigType write] ]} {
+    if {[string match [config_port -ConfigType write] $::CIxia::gIxia_ERR]} {
         set retVal $::CIxia::gIxia_ERR
         set retVal 0
     }
