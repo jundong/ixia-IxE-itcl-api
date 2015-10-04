@@ -154,16 +154,18 @@ stream config -dataPattern userpattern
 stream config -frameType "08 00"
 if { [llength $myvalue] >= 12 } {
     if { [lindex $myvalue 12] == "81" && [lindex $myvalue 13] == "00"} {
-        set vlanOptions    0x[lindex $myvalue 14][lindex $myvalue 15]
+        set vlanOpts    0x[lindex $myvalue 14][lindex $myvalue 15]
         vlan setDefault 
-        vlan config -vlanID                             [expr $vlanOptions >> 13]
-        vlan config -vlanID                             [expr $vlanOptions >> 13]
+        vlan config -vlanID                 [expr $vlanOpts & 0x0FFF]
+        vlan config -userPriority           [expr $vlanOpts >> 13]
         if {[vlan set $chassis $card $port]} {
                 errorMsg "Error calling vlan set $chassis $card $port"
                 set retCode $::TCL_ERROR
         }
+        stream config -frameType "[lindex $myvalue 16] [lindex $myvalue 17]"
         stream config -pattern [lrange $myvalue 16 end]
     } else {
+        stream config -frameType "[lindex $myvalue 12] [lindex $myvalue 13]"
         stream config -pattern [lrange $myvalue 12 end]
     }
 } 
@@ -181,9 +183,7 @@ if {[port isValidFeature $chassis $card $port $::portFeatureTableUdf]} {
 		errorMsg "Error calling tableUdf set $chassis $card $port"
 		set retCode $::TCL_ERROR
 	}
-
 }
-
 
 if {[port isValidFeature $chassis $card $port $::portFeatureRandomFrameSizeWeightedPair]} { 
 	weightedRandomFramesize setDefault
