@@ -432,7 +432,7 @@ package provide Ixia 1.0
     filterPallette config -patternOffset2 $offset2
     filterPallette set $_chassis $_card $_port
 
-    if {[string match [config_port -ConfigType write] $::CIxia::gIxia_ERR]} {
+    if {[string match [config_port -ConfigType config] $::CIxia::gIxia_ERR]} {
         set retVal $::CIxia::gIxia_ERR
     }
 
@@ -658,6 +658,17 @@ package provide Ixia 1.0
 
     Log "Set tx mode of {$_chassis $_card $_port}..."
     set retVal $::CIxia::gIxia_OK
+    set num 1
+    while { [stream get $_chassis $_card $_port $num ] != 1 } {
+        incr num
+    }
+    
+    # According to requirement, we should calculate the burstcount by stream
+    set burstcount [expr $burstcount / $num]
+    if { $burstcount == 0 } {
+        set burstcount 1
+    }
+    
     set streamid   1
 
     while {[stream get $_chassis $_card $_port $streamid] != 1} {
@@ -797,7 +808,7 @@ package provide Ixia 1.0
         set retVal $::CIxia::gIxia_ERR
         set retVal 0
     }
-    if {[string match [config_port -ConfigType write] $::CIxia::gIxia_ERR]} {
+    if {[string match [config_port -ConfigType config] $::CIxia::gIxia_ERR]} {
         set retVal $::CIxia::gIxia_ERR
         set retVal 0
     }
@@ -1115,7 +1126,7 @@ package provide Ixia 1.0
 #Name: CreateIPStream
 #Desc: set IP stream
 #Args: 
-#       -name:    IP Stream name
+#      -name:    IP Stream name
 #      -frameLen: frame length
 #      -utilization: send utilization(percent), default 100
 #      -txMode: send mode,[0|1] default 0 - continuous 1 - burst
@@ -1126,7 +1137,7 @@ package provide Ixia 1.0
 #      -srcIP: source ip, default 0.0.0.0
 #      -tos: tos default 0
 #      -_portSpeed: _port speed default 100                   
-#       -data: content of frame, 0 by default means random
+#      -data: content of frame, 0 by default means random
 #             example: -data 0   ,  the data pattern will be random    
 #                      -data abac,  use the "abac" as the data pattern
 #       -signature: enable signature or not, 0(no) by default
@@ -1141,8 +1152,8 @@ package provide Ixia 1.0
 #       -ipbitsoffset1: bitoffset,0 by default 
 #       -ipbitsoffset2: bitoffset,0 by default
 #       -ipcount1:  the count that the first ip stream will vary,0 by default 
-#      -ipcount2:  the count that the second ip stream will vary,0 by default
-#      -stepcount1: the step size that the first ip will vary, it should be the power of 2, eg. 1,2,4,8..., 0 by default means no change
+#       -ipcount2:  the count that the second ip stream will vary,0 by default
+#       -stepcount1: the step size that the first ip will vary, it should be the power of 2, eg. 1,2,4,8..., 0 by default means no change
 #       -stepcount2: the step size that the second ip will vary,it should be the power of 2, eg. 1,2,4,8..., 0 by default means no change
 #
 #Usage: _port1 CreateIPStream -SMac 0010-01e9-0011 -DMac ffff-ffff-ffff
@@ -1312,14 +1323,14 @@ package provide Ixia 1.0
     ip config -identifier   $id
     ip config -qosMode         ipV4ConfigTos
     switch $tos {
-        0 { ip config -precedence     routine }
-        1 { ip config -precedence     priority}
-        2 { ip config -precedence     immediate}
-        3 {    ip config -precedence     flash }
-        4 { ip config -precedence     flashOverride}
-        5 {    ip config -precedence     criticEcp}
-        6 {    ip config -precedence      internetControl}
-        7 {    ip config -precedence      networkControl}
+        0 { ip config -precedence       routine }
+        1 { ip config -precedence       priority}
+        2 { ip config -precedence       immediate}
+        3 { ip config -precedence       flash }
+        4 { ip config -precedence       flashOverride}
+        5 { ip config -precedence       criticEcp}
+        6 { ip config -precedence       internetControl}
+        7 { ip config -precedence       networkControl}
     }
     
     
@@ -3715,6 +3726,10 @@ package provide Ixia 1.0
     }
     set _streamid 1
     
+    if {[string match [config_port -ConfigType config] $::CIxia::gIxia_ERR]} {
+        set retVal $::CIxia::gIxia_ERR
+    }
+    
     return $retVal 
 }
 
@@ -4849,16 +4864,17 @@ package provide Ixia 1.0
 #@@Proc
 #Name: StartCapture
 #Desc: Start Port capture
-#Args: mode: capture mode,1:capture trig,2:capture bad,0xffff:capture all
+#Args: mode: capture mode,1:capture trig,2:capture bad,0:capture all
 #Usage: port1 StartCapture 
 ###########################################################################################
-::itcl::body CIxiaPortETH::StartCapture {{CapMode 0xffff}} {   
+::itcl::body CIxiaPortETH::StartCapture {{CapMode 0}} {
+    capture   setDefault
     switch $CapMode {
-        0 {set CapMode 0xffff}
-        1 {set CapMode 2}
-        2 {set CapMode 1}
+        0 { capture config -captureMode captureContinuousMode }
+        1 { capture config -captureMode captureTriggerMode }
     }
-
+    capture   set  $_chassis $_card $_port
+    
     set retVal $::CIxia::gIxia_OK
     if [string match [CaptureClear] $::CIxia::gIxia_ERR] {
         error "Capture clear failed..."
