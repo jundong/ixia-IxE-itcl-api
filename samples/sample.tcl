@@ -32,6 +32,7 @@ if { [file exists $ixPath] == 1 } {
 
 # Command Option Mode - Full (generate full configuration)
 
+source DemoCIxiaPortETH.tcl
 
 if {[isUNIX]} {
 	if {[ixConnectToTclServer 172.16.174.137]} {
@@ -54,17 +55,17 @@ set portList {}
 ######### Chassis-172.16.174.137 #########
 
 chassis get "172.16.174.137"
-set chassis	  [chassis cget -id]
+set ::chassis	  [chassis cget -id]
 
 ######### Card Type : Ixia Virtual Load Module ############
 
-set card     1
+set ::card     1
 
 ######### Chassis-172.16.174.137 Card-1  Port-1 #########
 
-set port     1
+set ::port     1
 
-port setFactoryDefaults $chassis $card $port
+port setFactoryDefaults $::chassis $::card $::port
 port config -speed                              1000
 port config -duplex                             full
 port config -flowControl                        false
@@ -124,8 +125,8 @@ port config -enableRsFec                        false
 port config -enableRsFecStats                   false
 port config -enableLinkTraining                 false
 port config -ieeeL1Defaults                     0
-if {[port set $chassis $card $port]} {
-	errorMsg "Error calling port set $chassis $card $port"
+if {[port set $::chassis $::card $::port]} {
+	errorMsg "Error calling port set $::chassis $::card $::port"
 	set retCode $::TCL_ERROR
 }
 
@@ -160,8 +161,8 @@ stat config -enableLacpStats                    false
 stat config -enableOamStats                     false
 stat config -enableMplsTpStats                  false
 stat config -enableElmiStats                    false
-if {[stat set $chassis $card $port]} {
-	errorMsg "Error calling stat set $chassis $card $port"
+if {[stat set $::chassis $::card $::port]} {
+	errorMsg "Error calling stat set $::chassis $::card $::port"
 	set retCode $::TCL_ERROR
 }
 
@@ -201,8 +202,8 @@ packetGroup config -pgidStatMode                       0
 packetGroup config -enableLastBitTimeStamp             false
 packetGroup config -seqAdvTrackingLateThreshold        1000
 packetGroup config -enableReArmFirstTimeStamp          false
-if {[packetGroup setRx $chassis $card $port]} {
-	errorMsg "Error calling packetGroup setRx $chassis $card $port"
+if {[packetGroup setRx $::chassis $::card $::port]} {
+	errorMsg "Error calling packetGroup setRx $::chassis $::card $::port"
 	set retCode $::TCL_ERROR
 }
 
@@ -212,8 +213,8 @@ autoDetectInstrumentation config -startOfScan                        0
 autoDetectInstrumentation config -signature                          {87 73 67 49 42 87 11 80 08 71 18 05}
 autoDetectInstrumentation config -enableSignatureMask                false
 autoDetectInstrumentation config -signatureMask                      {00 00 00 00 00 00 00 00 00 00 00 00}
-if {[autoDetectInstrumentation setRx $chassis $card $port]} {
-	errorMsg "Error calling autoDetectInstrumentation setRx $chassis $card $port"
+if {[autoDetectInstrumentation setRx $::chassis $::card $::port]} {
+	errorMsg "Error calling autoDetectInstrumentation setRx $::chassis $::card $::port"
 	set retCode $::TCL_ERROR
 }
 
@@ -284,8 +285,8 @@ filter config -captureTriggerPatternExpression    ""
 filter config -captureFilterPatternExpression     ""
 filter config -asyncTrigger1PatternExpression     ""
 filter config -asyncTrigger2PatternExpression     ""
-if {[filter set $chassis $card $port]} {
-	errorMsg "Error calling filter set $chassis $card $port"
+if {[filter set $::chassis $::card $::port]} {
+	errorMsg "Error calling filter set $::chassis $::card $::port"
 	set retCode $::TCL_ERROR
 }
 
@@ -337,22 +338,22 @@ filterPallette config -range1MatchMinMaxOnly              0
 filterPallette config -range2MatchMinMaxOnly              0
 filterPallette config -range3MatchMinMaxOnly              0
 filterPallette config -range4MatchMinMaxOnly              0
-if {[filterPallette set $chassis $card $port]} {
-	errorMsg "Error calling filterPallette set $chassis $card $port"
+if {[filterPallette set $::chassis $::card $::port]} {
+	errorMsg "Error calling filterPallette set $::chassis $::card $::port"
 	set retCode $::TCL_ERROR
 }
 
 
 ipAddressTable setDefault 
 ipAddressTable config -defaultGateway                     "0.0.0.0"
-if {[ipAddressTable set $chassis $card $port]} {
-	errorMsg "Error calling ipAddressTable set $chassis $card $port"
+if {[ipAddressTable set $::chassis $::card $::port]} {
+	errorMsg "Error calling ipAddressTable set $::chassis $::card $::port"
 	set retCode $::TCL_ERROR
 }
 
 
-if {[interfaceTable select $chassis $card $port]} {
-	errorMsg "Error calling interfaceTable select $chassis $card $port"
+if {[interfaceTable select $::chassis $::card $::port]} {
+	errorMsg "Error calling interfaceTable select $::chassis $::card $::port"
 	set retCode $::TCL_ERROR
 }
 
@@ -413,8 +414,8 @@ protocolServer config -enableOspfCreateInterface          false
 protocolServer config -enableRipCreateInterface           false
 protocolServer config -enableRsvpCreateInterface          false
 protocolServer config -enableIgmpCreateInterface          false
-if {[protocolServer set $chassis $card $port]} {
-	errorMsg "Error calling protocolServer set $chassis $card $port"
+if {[protocolServer set $::chassis $::card $::port]} {
+	errorMsg "Error calling protocolServer set $::chassis $::card $::port"
 	set retCode $::TCL_ERROR
 }
 
@@ -431,12 +432,12 @@ oamPort config -idleTimer                          5
 oamPort config -enableOptionalTlv                  false
 oamPort config -optionalTlvType                    254
 oamPort config -optionalTlvValue                   ""
-if {[oamPort set $chassis $card $port]} {
-	errorMsg "Error calling oamPort set $chassis $card $port"
+if {[oamPort set $::chassis $::card $::port]} {
+	errorMsg "Error calling oamPort set $::chassis $::card $::port"
 	set retCode $::TCL_ERROR
 }
 
-lappend portList [list $chassis $card $port]
+lappend portList [list $::chassis $::card $::port]
 
 ######### Card Type : Ixia Virtual Load Module ############
 
@@ -446,7 +447,7 @@ set card     2
 
 set port     1
 
-port setFactoryDefaults $chassis $card $port
+port setFactoryDefaults $::chassis $::card $::port
 port config -speed                              1000
 port config -duplex                             full
 port config -flowControl                        false
@@ -506,8 +507,8 @@ port config -enableRsFec                        false
 port config -enableRsFecStats                   false
 port config -enableLinkTraining                 false
 port config -ieeeL1Defaults                     0
-if {[port set $chassis $card $port]} {
-	errorMsg "Error calling port set $chassis $card $port"
+if {[port set $::chassis $::card $::port]} {
+	errorMsg "Error calling port set $::chassis $::card $::port"
 	set retCode $::TCL_ERROR
 }
 
@@ -542,8 +543,8 @@ stat config -enableLacpStats                    false
 stat config -enableOamStats                     false
 stat config -enableMplsTpStats                  false
 stat config -enableElmiStats                    false
-if {[stat set $chassis $card $port]} {
-	errorMsg "Error calling stat set $chassis $card $port"
+if {[stat set $::chassis $::card $::port]} {
+	errorMsg "Error calling stat set $::chassis $::card $::port"
 	set retCode $::TCL_ERROR
 }
 
@@ -583,8 +584,8 @@ packetGroup config -pgidStatMode                       0
 packetGroup config -enableLastBitTimeStamp             false
 packetGroup config -seqAdvTrackingLateThreshold        1000
 packetGroup config -enableReArmFirstTimeStamp          false
-if {[packetGroup setRx $chassis $card $port]} {
-	errorMsg "Error calling packetGroup setRx $chassis $card $port"
+if {[packetGroup setRx $::chassis $::card $::port]} {
+	errorMsg "Error calling packetGroup setRx $::chassis $::card $::port"
 	set retCode $::TCL_ERROR
 }
 
@@ -594,8 +595,8 @@ autoDetectInstrumentation config -startOfScan                        0
 autoDetectInstrumentation config -signature                          {87 73 67 49 42 87 11 80 08 71 18 05}
 autoDetectInstrumentation config -enableSignatureMask                false
 autoDetectInstrumentation config -signatureMask                      {00 00 00 00 00 00 00 00 00 00 00 00}
-if {[autoDetectInstrumentation setRx $chassis $card $port]} {
-	errorMsg "Error calling autoDetectInstrumentation setRx $chassis $card $port"
+if {[autoDetectInstrumentation setRx $::chassis $::card $::port]} {
+	errorMsg "Error calling autoDetectInstrumentation setRx $::chassis $::card $::port"
 	set retCode $::TCL_ERROR
 }
 
@@ -666,8 +667,8 @@ filter config -captureTriggerPatternExpression    ""
 filter config -captureFilterPatternExpression     ""
 filter config -asyncTrigger1PatternExpression     ""
 filter config -asyncTrigger2PatternExpression     ""
-if {[filter set $chassis $card $port]} {
-	errorMsg "Error calling filter set $chassis $card $port"
+if {[filter set $::chassis $::card $::port]} {
+	errorMsg "Error calling filter set $::chassis $::card $::port"
 	set retCode $::TCL_ERROR
 }
 
@@ -719,22 +720,22 @@ filterPallette config -range1MatchMinMaxOnly              0
 filterPallette config -range2MatchMinMaxOnly              0
 filterPallette config -range3MatchMinMaxOnly              0
 filterPallette config -range4MatchMinMaxOnly              0
-if {[filterPallette set $chassis $card $port]} {
-	errorMsg "Error calling filterPallette set $chassis $card $port"
+if {[filterPallette set $::chassis $::card $::port]} {
+	errorMsg "Error calling filterPallette set $::chassis $::card $::port"
 	set retCode $::TCL_ERROR
 }
 
 
 ipAddressTable setDefault 
 ipAddressTable config -defaultGateway                     "0.0.0.0"
-if {[ipAddressTable set $chassis $card $port]} {
-	errorMsg "Error calling ipAddressTable set $chassis $card $port"
+if {[ipAddressTable set $::chassis $::card $::port]} {
+	errorMsg "Error calling ipAddressTable set $::chassis $::card $::port"
 	set retCode $::TCL_ERROR
 }
 
 
-if {[interfaceTable select $chassis $card $port]} {
-	errorMsg "Error calling interfaceTable select $chassis $card $port"
+if {[interfaceTable select $::chassis $::card $::port]} {
+	errorMsg "Error calling interfaceTable select $::chassis $::card $::port"
 	set retCode $::TCL_ERROR
 }
 
@@ -795,8 +796,8 @@ protocolServer config -enableOspfCreateInterface          false
 protocolServer config -enableRipCreateInterface           false
 protocolServer config -enableRsvpCreateInterface          false
 protocolServer config -enableIgmpCreateInterface          false
-if {[protocolServer set $chassis $card $port]} {
-	errorMsg "Error calling protocolServer set $chassis $card $port"
+if {[protocolServer set $::chassis $::card $::port]} {
+	errorMsg "Error calling protocolServer set $::chassis $::card $::port"
 	set retCode $::TCL_ERROR
 }
 
@@ -813,12 +814,12 @@ oamPort config -idleTimer                          5
 oamPort config -enableOptionalTlv                  false
 oamPort config -optionalTlvType                    254
 oamPort config -optionalTlvValue                   ""
-if {[oamPort set $chassis $card $port]} {
-	errorMsg "Error calling oamPort set $chassis $card $port"
+if {[oamPort set $::chassis $::card $::port]} {
+	errorMsg "Error calling oamPort set $::chassis $::card $::port"
 	set retCode $::TCL_ERROR
 }
 
-lappend portList [list $chassis $card $port]
+lappend portList [list $::chassis $::card $::port]
 ixWritePortsToHardware portList
 ixCheckLinkState portList
 
@@ -832,19 +833,19 @@ ixCheckLinkState portList
 ######### Chassis-172.16.174.137 Card-1  Port-1 #########
 
 chassis get "172.16.174.137"
-set chassis	  [chassis cget -id]
-set card     1
-set port     1
-streamRegion get $chassis $card $port
-if {[streamRegion enableGenerateWarningList  $chassis $card $port 0]} {
-	errorMsg "Error calling streamRegion enableGenerateWarningList  $chassis $card $port 0"
+set ::chassis	  [chassis cget -id]
+set ::card     1
+set ::port     1
+streamRegion get $::chassis $::card $::port
+if {[streamRegion enableGenerateWarningList  $::chassis $::card $::port 0]} {
+	errorMsg "Error calling streamRegion enableGenerateWarningList  $::chassis $::card $::port 0"
 	set retCode $::TCL_ERROR
 }
 
 set streamId 1
 
-if {[port resetStreamProtocolStack $chassis $card $port]} {
-	errorMsg "Error calling port resetStreamProtocolStack $chassis $card $port"
+if {[port resetStreamProtocolStack $::chassis $::card $::port]} {
+	errorMsg "Error calling port resetStreamProtocolStack $::chassis $::card $::port"
 	set retCode $::TCL_ERROR
 }
 
@@ -963,56 +964,56 @@ ip config -dscpValue                          0x00
 ip config -classSelector                      ipV4DscpClass1
 ip config -assuredForwardingClass             ipV4DscpAssuredForwardingClass1
 ip config -assuredForwardingPrecedence        ipV4DscpPrecedenceLowDrop
-if {[ip set $chassis $card $port]} {
-	errorMsg "Error calling ip set $chassis $card $port"
+if {[ip set $::chassis $::card $::port]} {
+	errorMsg "Error calling ip set $::chassis $::card $::port"
 	set retCode $::TCL_ERROR
 }
 
 
 
 
-if {[port isValidFeature $chassis $card $port $::portFeatureTableUdf]} { 
+if {[port isValidFeature $::chassis $::card $::port $::portFeatureTableUdf]} { 
 	tableUdf setDefault
 	tableUdf clearColumns
-	if {[tableUdf set $chassis $card $port]} {
-		errorMsg "Error calling tableUdf set $chassis $card $port"
+	if {[tableUdf set $::chassis $::card $::port]} {
+		errorMsg "Error calling tableUdf set $::chassis $::card $::port"
 		set retCode $::TCL_ERROR
 	}
 
 }
 
 
-if {[port isValidFeature $chassis $card $port $::portFeatureRandomFrameSizeWeightedPair]} { 
+if {[port isValidFeature $::chassis $::card $::port $::portFeatureRandomFrameSizeWeightedPair]} { 
 	weightedRandomFramesize setDefault
-	if {[weightedRandomFramesize set $chassis $card $port]} {
-		errorMsg "Error calling weightedRandomFramesize set $chassis $card $port"
+	if {[weightedRandomFramesize set $::chassis $::card $::port]} {
+		errorMsg "Error calling weightedRandomFramesize set $::chassis $::card $::port"
 		set retCode $::TCL_ERROR
 	}
 
 }
 
-if {[stream set $chassis $card $port $streamId]} {
-	errorMsg "Error calling stream set $chassis $card $port $streamId"
+if {[stream set $::chassis $::card $::port $streamId]} {
+	errorMsg "Error calling stream set $::chassis $::card $::port $streamId"
 	set retCode $::TCL_ERROR
 }
 
 incr streamId
-streamRegion generateWarningList $chassis $card $port
+streamRegion generateWarningList $::chassis $::card $::port
 
 ######### Chassis-172.16.174.137 Card-2  Port-1 #########
 
 set card     2
 set port     1
-streamRegion get $chassis $card $port
-if {[streamRegion enableGenerateWarningList  $chassis $card $port 0]} {
-	errorMsg "Error calling streamRegion enableGenerateWarningList  $chassis $card $port 0"
+streamRegion get $::chassis $::card $::port
+if {[streamRegion enableGenerateWarningList  $::chassis $::card $::port 0]} {
+	errorMsg "Error calling streamRegion enableGenerateWarningList  $::chassis $::card $::port 0"
 	set retCode $::TCL_ERROR
 }
 
 set streamId 1
 
-if {[port resetStreamProtocolStack $chassis $card $port]} {
-	errorMsg "Error calling port resetStreamProtocolStack $chassis $card $port"
+if {[port resetStreamProtocolStack $::chassis $::card $::port]} {
+	errorMsg "Error calling port resetStreamProtocolStack $::chassis $::card $::port"
 	set retCode $::TCL_ERROR
 }
 
@@ -1131,39 +1132,42 @@ ip config -dscpValue                          0x00
 ip config -classSelector                      ipV4DscpClass1
 ip config -assuredForwardingClass             ipV4DscpAssuredForwardingClass1
 ip config -assuredForwardingPrecedence        ipV4DscpPrecedenceLowDrop
-if {[ip set $chassis $card $port]} {
-	errorMsg "Error calling ip set $chassis $card $port"
+if {[ip set $::chassis $::card $::port]} {
+	errorMsg "Error calling ip set $::chassis $::card $::port"
 	set retCode $::TCL_ERROR
 }
 
 
 
 
-if {[port isValidFeature $chassis $card $port $::portFeatureTableUdf]} { 
+if {[port isValidFeature $::chassis $::card $::port $::portFeatureTableUdf]} { 
 	tableUdf setDefault
 	tableUdf clearColumns
-	if {[tableUdf set $chassis $card $port]} {
-		errorMsg "Error calling tableUdf set $chassis $card $port"
+	if {[tableUdf set $::chassis $::card $::port]} {
+		errorMsg "Error calling tableUdf set $::chassis $::card $::port"
 		set retCode $::TCL_ERROR
 	}
 
 }
 
 
-if {[port isValidFeature $chassis $card $port $::portFeatureRandomFrameSizeWeightedPair]} { 
+if {[port isValidFeature $::chassis $::card $::port $::portFeatureRandomFrameSizeWeightedPair]} { 
 	weightedRandomFramesize setDefault
-	if {[weightedRandomFramesize set $chassis $card $port]} {
-		errorMsg "Error calling weightedRandomFramesize set $chassis $card $port"
+	if {[weightedRandomFramesize set $::chassis $::card $::port]} {
+		errorMsg "Error calling weightedRandomFramesize set $::chassis $::card $::port"
 		set retCode $::TCL_ERROR
 	}
 
 }
 
-if {[stream set $chassis $card $port $streamId]} {
-	errorMsg "Error calling stream set $chassis $card $port $streamId"
+if {[stream set $::chassis $::card $::port $streamId]} {
+	errorMsg "Error calling stream set $::chassis $::card $::port $streamId"
 	set retCode $::TCL_ERROR
 }
 
+DeleteAllStream
+SetCustomPkt "01 00 5e 00 00 01 00 00 00 00 00 01 08 00 45 00 00 28 00 00 00 00 01 02 98 37 c4 83 7d 03 e0 00 00 16 22 00 ea 41 00 00 00 01 01 00 00 01 e1 01 01 01 8e b5 82 03 00 00 00 00 00 00"
+
 incr streamId
-streamRegion generateWarningList $chassis $card $port
+streamRegion generateWarningList $::chassis $::card $::port
 ixWriteConfigToHardware portList -noProtocolServer

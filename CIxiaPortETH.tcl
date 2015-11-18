@@ -436,7 +436,7 @@ package provide Ixia 1.0
         set retVal $::CIxia::gIxia_ERR
     }
 
-       return $retVal
+    return $retVal
 }
 
 ###########################################################################################
@@ -740,7 +740,15 @@ package provide Ixia 1.0
     set retVal $::CIxia::gIxia_OK
     puts "SetCustomPkt: $myValue  $pkt_len"    
     set myvalue $myValue
-       
+    
+    protocol setDefault 
+    protocol config -name mac
+    protocol config -appName       noType
+    protocol config -ethernetType  ethernetII
+
+    stream setDefault        
+    stream config -enable true
+    
     if {[llength $pkt_len] == 1} {
         if [string match $pkt_len "-1"] {
             set pkt_len [llength $myvalue]
@@ -797,10 +805,10 @@ package provide Ixia 1.0
             }
             
             stream config -frameType "[lindex $myvalue 16] [lindex $myvalue 17]"
-            stream config -pattern [lrange $myvalue 16 end]
+            stream config -pattern [lrange $myvalue 18 end]
         } else {
             stream config -frameType "[lindex $myvalue 12] [lindex $myvalue 13]"
-            stream config -pattern [lrange $myvalue 12 end]
+            stream config -pattern [lrange $myvalue 14 end]
         }
     }      
     
@@ -4870,10 +4878,21 @@ package provide Ixia 1.0
 ::itcl::body CIxiaPortETH::StartCapture {{CapMode 0}} {
     capture   setDefault
     switch $CapMode {
-        0 { capture config -captureMode captureContinuousMode }
-        1 { capture config -captureMode captureTriggerMode }
+        0 {
+            capture config -captureMode captureContinuousMode
+            capture config -afterTriggerFilter captureAfterTriggerConditionFilter
+        }
+        2 {
+            capture config -captureMode captureTriggerMode
+            capture config -afterTriggerFilter captureAfterTriggerConditionFilter
+        }
+        default {}
     }
     capture   set  $_chassis $_card $_port
+    
+    if {[string match [config_port -ConfigType write] $::CIxia::gIxia_ERR]} {
+        set retVal $::CIxia::gIxia_ERR
+    }
     
     set retVal $::CIxia::gIxia_OK
     if [string match [CaptureClear] $::CIxia::gIxia_ERR] {
