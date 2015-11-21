@@ -404,21 +404,40 @@ package provide Ixia 1.0
     set trigmode $TrigMode
     Log "Set trigger ($offset1 $pattern1 $trigmode $offset2 $pattern2) at $_chassis $_card $_port..."
     set retVal $::CIxia::gIxia_OK
-
-    switch -- $trigmode {
-        ""   {
-                set TriggerMode pattern1
+ 
+    #将十进制数转换为十六进制数
+    if {[regsub -nocase -all {0x} $pattern1 "" pattern1] == 0} {
+        set m_pattern1 ""
+        foreach ele $pattern1 {
+            lappend m_pattern1 [format %02x $ele]
         }
-        "||" {
-                set TriggerMode pattern2
-        }
-        "&&" {
-            set TriggerMode pattern1AndPattern2
-        }
-        default {
-            error "Invaild trigmode: $trigmode"
-        }
+        set pattern1 $m_pattern1
     }
+ 
+    if {[regsub -nocase -all {0x} $pattern2 "" pattern2] == 0 && [string length $pattern2] > 0} {
+        set m_pattern2 ""
+        foreach ele $pattern2 {
+            lappend m_pattern2 [format %02x $ele]
+        }
+        set pattern2 $m_pattern2
+    }
+    #end
+    
+    switch -- $trigmode {
+        ""      {
+                set TriggerMode pattern1
+                }
+        "||"    {
+                set TriggerMode pattern1OrPattern2
+                }
+        "&&"    {
+                set TriggerMode pattern1AndPattern2
+                }
+    default {
+            error "Invaild trigmode: $trigmode"
+           }
+    }
+ 
     capture                      setDefault
     capture                      set               $_chassis $_card $_port
     filter                       setDefault
@@ -431,13 +450,14 @@ package provide Ixia 1.0
     filterPallette config -patternOffset1 $offset1
     filterPallette config -patternOffset2 $offset2
     filterPallette set $_chassis $_card $_port
-
+ 
     if {[string match [config_port -ConfigType config] $::CIxia::gIxia_ERR]} {
         set retVal $::CIxia::gIxia_ERR
     }
 
     return $retVal
 }
+
 
 ###########################################################################################
 #@@Proc
@@ -658,15 +678,17 @@ package provide Ixia 1.0
 
     Log "Set tx mode of {$_chassis $_card $_port}..."
     set retVal $::CIxia::gIxia_OK
-    set num 1
-    while { [stream get $_chassis $_card $_port $num ] != 1 } {
+    set num 0
+    while { [stream get $_chassis $_card $_port [expr $num + 1]] != 1 } {
         incr num
     }
     
     # According to requirement, we should calculate the burstcount by stream
-    set burstcount [expr $burstcount / $num]
-    if { $burstcount == 0 } {
-        set burstcount 1
+    if { $num > 0 } {
+        set burstcount [expr $burstcount / $num]
+        if { $burstcount == 0 } {
+            set burstcount 1
+        }
     }
     
     set streamid   1
@@ -798,7 +820,8 @@ package provide Ixia 1.0
             # 12 bits Vlan ID
             vlan config -vlanID                 [expr $vlanOpts & 0x0FFF]
             # 3 bits Priority
-            vlan config -userPriority           [expr $vlanOpts >> 13]
+            vlan config -userPriority           [expr [expr $vlanOpts >> 13] & 0x0007]
+            vlan config -cfi                    [expr [expr $vlanOpts >> 12] & 0x0001]
             if {[vlan set $_chassis $_card $_port]} {
                 errorMsg "Error calling vlan set $_chassis $_card $_port"
                 set retCode $::CIxia::gIxia_ERR
@@ -1072,9 +1095,9 @@ package provide Ixia 1.0
 #
 ###########################################################################################
 ::itcl::body CIxiaPortETH::CreateCustomStream {args} {
-    Log "Create custom stream..."
+         Log "Create custom stream..."
     set retVal $::CIxia::gIxia_OK
-
+ 
     ##framelen utilization txmode burstcount protheader {portspeed 1000}
     set FrameLen 60
     set FrameRate 0
@@ -1082,9 +1105,9 @@ package provide Ixia 1.0
     set TxMode 0
     set BurstCount 0
     set ProHeader ""
-
+ 
     set argList {FrameLen.arg Utilization.arg FrameRate.arg TxMode.arg BurstCount.arg ProHeader.arg}
-
+ 
     set result [cmdline::getopt args $argList opt val]
     while {$result>0} {
         set $opt $val
@@ -1094,10 +1117,7 @@ package provide Ixia 1.0
         puts "CreateCustomStream has illegal parameter! $val"
         return $::CIxia::gIxia_ERR
     }
-    #if {[llength $FrameLen]==2} {
-    #    set FrameLen [expr ([llength $FrameLen 0] + [llength $FrameLen 1])/2]
-    #}
-    set framelen $FrameLen
+    
     if { $FrameRate != 0 } {
         set utilization $FrameRate
         set mode "PktPerSec"
@@ -1108,20 +1128,20 @@ package provide Ixia 1.0
     set txmode $TxMode
     set burstcount $BurstCount
     set protheader $ProHeader
-
-    #port config -speed $portspeed
+    
+    set framelen [llength $protheader]
     set retVal1 [SetCustomPkt $protheader $framelen]
-    if {[string match $retVal1 $::CIxia::gIxia_ERR]} {    
+    if {[string match $retVal1 $::CIxia::gIxia_ERR]} {       
         error "CreateCustomStream:SetCustomPkt failed."
         set retVal $::CIxia::gIxia_ERR
     }
     set retVal2 [SetTxMode $txmode $burstcount]
-    if {[string match $retVal2 $::CIxia::gIxia_ERR]} {    
+    if {[string match $retVal2 $::CIxia::gIxia_ERR]} {       
         error "CreateCustomStream:SetTxMode failed."
         set retVal $::CIxia::gIxia_ERR
     }
     set retVal3 [SetTxSpeed $utilization $mode]
-    if {[string match $retVal3 $::CIxia::gIxia_ERR]} {    
+    if {[string match $retVal3 $::CIxia::gIxia_ERR]} {       
         error "CreateCustomStream:SetTxSpeed failed."
         set retVal $::CIxia::gIxia_ERR
     }

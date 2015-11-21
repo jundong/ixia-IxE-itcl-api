@@ -59,9 +59,10 @@ proc SetCustomPkt {{myValue 0} {pkt_len -1}} {
             # 12 bits Vlan ID
             vlan config -vlanID                 [expr $vlanOpts & 0x0FFF]
             # 3 bits Priority
-            vlan config -userPriority           [expr $vlanOpts >> 13]
-            if {[vlan set $_chassis $_card $_port]} {
-                errorMsg "Error calling vlan set $_chassis $_card $_port"
+            vlan config -userPriority           [expr [expr $vlanOpts >> 13] & 0x0007]
+            vlan config -cfi                    [expr [expr $vlanOpts >> 12] & 0x0001]
+            if {[vlan set $::chassis $::card $::port]} {
+                errorMsg "Error calling vlan set $::chassis $::card $::port"
                 set retCode $::TCL_ERROR
             }
             
