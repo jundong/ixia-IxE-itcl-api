@@ -164,3 +164,35 @@ proc DeleteAllStream {} {
     
     return 0 
 }
+
+proc SetTxSpeed {Utilization {Mode "Uti"}} {
+    set utilization $Utilization
+    set _uti $Utilization
+    set _mode $Mode
+
+    set retVal 0
+    regsub {[%]} $utilization {} utilization
+    set streamid   1
+
+    while {[stream get $::chassis $::card $::port $streamid] != 1} {
+        if { $Mode == "Uti" } {
+            stream config -rateMode usePercentRate
+            stream config -percentPacketRate $utilization
+        } else {
+            stream config -rateMode streamRateModeFps
+            stream config -fpsRate $utilization
+        }
+    
+        if {[string match [config_stream $streamid] $::TCL_ERROR]} {
+            set retVal $::TCL_ERROR
+        }
+        
+        incr streamid
+    }
+    
+    if {[string match [config_port write] $::TCL_ERROR]} {
+        set retVal $::TCL_ERROR
+    }
+
+    return $retVal
+}

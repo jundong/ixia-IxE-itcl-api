@@ -22,6 +22,7 @@ package require IxTclHal
 package require Smartbits
 package require packet
 package require ixia_utilities
+
 #引入基类
 package require TestInstrument 1.0
 
@@ -37,6 +38,8 @@ package provide Ixia 1.0
     private variable _port ""
     private variable _media ""
     private variable _streamid ""
+    private variable _uti ""
+    private variable _mode ""
     private variable portList ""
 
     #    constructor {lst} {
@@ -180,7 +183,6 @@ package provide Ixia 1.0
             # }
             # lappend 
         # }
-        
     # }
     
     #处理并记录error错误
@@ -212,15 +214,19 @@ package provide Ixia 1.0
         if {[llength $tmp_list] == 2} {
             upvar [lindex $tmp_list 0] [lindex $tmp_list 0]
             append argList " [lindex $tmp_list 0].arg"
+
+
         }
     }
     set result [cmdline::getopt args $argList opt val]
     while {$result > 0} {
         set $opt $val
         set result [cmdline::getopt args $argList opt val] 
+
     }   
     if {$result < 0} {
         error "Invaild value:$args"
+
     }
 }
 
@@ -243,8 +249,8 @@ package provide Ixia 1.0
 #Name: config_port
 #Desc: Config to port
 #Args:
-#    -ConfigType [write | config] write to port or config to port, config default
-#       -NoProtServ args of ixWritePortsToHardware -noProtocolServer, ture or false(default),
+#      -ConfigType [write | config] write to port or config to port, config default
+#      -NoProtServ args of ixWritePortsToHardware -noProtocolServer, ture or false(default),
 #Usage: config_port -ConfigType write
 ###########################################################################################
 ::itcl::body CIxiaPortETH::config_port { args } {
@@ -271,10 +277,10 @@ package provide Ixia 1.0
             set command "ixWriteConfigToHardware"
         }
     }
-       if [catch {eval $command portList $cmd}] {
+    if [catch {eval $command portList $cmd}] {
         error "Can't write config to $_chassis $_card $_port\n$::ixErrorInfo"
         set retVal $::CIxia::gIxia_ERR   
-       }    
+    }    
     
     return $retVal
 }
@@ -309,16 +315,16 @@ package provide Ixia 1.0
 #Usage: port1 Reset
 ###########################################################################################
 ::itcl::body CIxiaPortETH::Reset { args } {
+
     puts "proc Reset"
     Log "Reset port {$_chassis $_card $_port}..."
     set retVal $::CIxia::gIxia_OK
-      
+ 
     stream setDefault
     if {[string match [config_stream -StreamId $_streamid] $::CIxia::gIxia_ERR]} {
         set retVal $::CIxia::gIxia_ERR
     }
     
-          
     if [string match [Clear] $::CIxia::gIxia_ERR] {
         set retVal $::CIxia::gIxia_ERR
     }
@@ -345,7 +351,7 @@ package provide Ixia 1.0
     
     #$this ProtocolInit
     DeleteAllStream
-    
+
     return $retVal
 }
 
@@ -363,9 +369,11 @@ package provide Ixia 1.0
         Log "Port $_chassis $_card $_port Link is down! Can not Run." warning
         set retVal $::CIxia::gIxia_ERR
         return $retVal
+
     }
     if [ixStartTransmit portList] {
         set retVal $::CIxia::gIxia_ERR
+
     }
 
     return $retVal
@@ -394,10 +402,10 @@ package provide Ixia 1.0
 #Desc: Set filter conditions
 #Args:  
 #    offset1:       offset of packect
-#       pattern1:       trigger pattern
+#    pattern1:       trigger pattern
 #    trigMode:      support && and ||
-#       offset2:       offset of packet
-#       pattern2:       trigger pattern
+#    offset2:       offset of packet
+#    pattern2:       trigger pattern
 #Usage: port1 SetTrig 12 {00 10}
 ###########################################################################################
 ::itcl::body CIxiaPortETH::SetTrig {offset1 pattern1 {TrigMode ""} {offset2 ""} {pattern2 ""}} {
@@ -413,7 +421,7 @@ package provide Ixia 1.0
         }
         set pattern1 $m_pattern1
     }
- 
+
     if {[regsub -nocase -all {0x} $pattern2 "" pattern2] == 0 && [string length $pattern2] > 0} {
         set m_pattern2 ""
         foreach ele $pattern2 {
@@ -435,9 +443,10 @@ package provide Ixia 1.0
                 }
     default {
             error "Invaild trigmode: $trigmode"
+
            }
     }
- 
+
     capture                      setDefault
     capture                      set               $_chassis $_card $_port
     filter                       setDefault
@@ -450,14 +459,13 @@ package provide Ixia 1.0
     filterPallette config -patternOffset1 $offset1
     filterPallette config -patternOffset2 $offset2
     filterPallette set $_chassis $_card $_port
- 
+
     if {[string match [config_port -ConfigType config] $::CIxia::gIxia_ERR]} {
         set retVal $::CIxia::gIxia_ERR
     }
 
     return $retVal
 }
-
 
 ###########################################################################################
 #@@Proc
@@ -510,7 +518,7 @@ package provide Ixia 1.0
                 port config -advertise1000FullDuplex  false    
                 port config -advertise100FullDuplex   false
                 port config -advertise100HalfDuplex   true
-                    port config -advertise10FullDuplex   false
+                port config -advertise10FullDuplex   false
                 port config -advertise10HalfDuplex   true
             }
         } elseif { $speed == 0x0040 } {
@@ -611,6 +619,8 @@ package provide Ixia 1.0
 ###########################################################################################
 ::itcl::body CIxiaPortETH::SetTxSpeed {Utilization {Mode "Uti"}} {
     set utilization $Utilization
+    set _uti $Utilization
+    set _mode $Mode
 
     Log "Set tx speed of {$_chassis $_card $_port}..."
     set retVal $::CIxia::gIxia_OK
@@ -633,7 +643,7 @@ package provide Ixia 1.0
         incr streamid
     }
     
-    if {[string match [config_port -ConfigType write] $::CIxia::gIxia_ERR]} {
+    if {[string match [config_port -ConfigType config] $::CIxia::gIxia_ERR]} {
         set retVal $::CIxia::gIxia_ERR
     }
 
@@ -661,7 +671,6 @@ package provide Ixia 1.0
 #Usage: port1 SetTxMode 0
 ###########################################################################################
 ::itcl::body CIxiaPortETH::SetTxMode {TxMode {BurstCount 0} {InterBurstGap 0} {InterBurstGapScale 0} {MultiBurstCount 0}} {
-
     set txmode $TxMode
     set burstcount $BurstCount
     set interburstgap $InterBurstGap
@@ -690,7 +699,7 @@ package provide Ixia 1.0
             set burstcount 1
         }
     }
-    
+
     set streamid   1
 
     while {[stream get $_chassis $_card $_port $streamid] != 1} {
@@ -764,17 +773,23 @@ package provide Ixia 1.0
     set myvalue $myValue
     
     protocol setDefault 
-    protocol config -name mac
-    protocol config -appName       noType
-    protocol config -ethernetType  ethernetII
+    protocol config -name 			mac
+    protocol config -appName       	noType
+    protocol config -ethernetType  	ethernetII
 
     stream setDefault        
     stream config -enable true
     
     if {[llength $pkt_len] == 1} {
+
         if [string match $pkt_len "-1"] {
             set pkt_len [llength $myvalue]
         }
+
+		if { $pkt_len < 60 } {
+			set pkt_len 60
+		}
+
         stream config -framesize [expr $pkt_len + 4]
         stream config -frameSizeType sizeFixed
     } else {
@@ -783,10 +798,7 @@ package provide Ixia 1.0
         stream config -frameSizeMIN [lindex $pkt_len 0]
         stream config -frameSizeMAX [lindex $pkt_len 1]
     }
-    
-    if { $pkt_len < 60 } {
-        set pkt_len 60
-    }
+
     if { $pkt_len > [llength $myvalue] } {
         set patch_value [string repeat "00 " [expr $pkt_len - [llength $myvalue]]]
         set myvalue [concat $myvalue $patch_value]
@@ -953,8 +965,12 @@ package provide Ixia 1.0
     Log "Set packet of {$_chassis $_card $_port}:\n\t$eth_packet"
     puts "Set packet of {$_chassis $_card $_port}:\n\t$eth_packet  $PacketLen"
     
-    $this SetCustomPkt $eth_packet $PacketLen
-    
+    if {[llength $eth_packet] > $PacketLen} {
+        $this SetCustomPkt $eth_packet -1
+    } else {
+        $this SetCustomPkt $eth_packet $PacketLen
+    }
+	
     return $::CIxia::gIxia_OK
 }
 
@@ -1095,19 +1111,21 @@ package provide Ixia 1.0
 #
 ###########################################################################################
 ::itcl::body CIxiaPortETH::CreateCustomStream {args} {
-         Log "Create custom stream..."
+    Log "Create custom stream..."
     set retVal $::CIxia::gIxia_OK
- 
+
     ##framelen utilization txmode burstcount protheader {portspeed 1000}
     set FrameLen 60
     set FrameRate 0
-    set Utilization 1
     set TxMode 0
     set BurstCount 0
     set ProHeader ""
- 
+    set Utilization 1
+    if { $_uti != "" } {
+        set Utilization $_uti
+    }
     set argList {FrameLen.arg Utilization.arg FrameRate.arg TxMode.arg BurstCount.arg ProHeader.arg}
- 
+
     set result [cmdline::getopt args $argList opt val]
     while {$result>0} {
         set $opt $val
@@ -1124,6 +1142,9 @@ package provide Ixia 1.0
     } else {
         set utilization $Utilization
         set mode "Uti"
+        if { $_mode != "" } {
+            set mode $_mode
+        }
     }
     set txmode $TxMode
     set burstcount $BurstCount
@@ -1147,7 +1168,6 @@ package provide Ixia 1.0
     }
     return $retVal      
 }
-
 
 ###########################################################################################
 #@@Proc
@@ -1192,7 +1212,6 @@ package provide Ixia 1.0
 
     set framelen   64
     set framerate  0
-    set utilization 100
     set txmode     0
     set burstcount 1
     set desmac       ffff-ffff-ffff
@@ -1201,8 +1220,10 @@ package provide Ixia 1.0
     set srcip        0.0.0.0
     set tos        0
     set _portspeed  100
+
     set data 0
     set userPattern 0
+
     set signature 0 
     set ipmode 0 
     set ipbitsoffset1 0
@@ -1233,6 +1254,10 @@ package provide Ixia 1.0
     set enable     true
     set value      {{00 }}
     set strframenum    100
+    set utilization 100
+    if { $_uti != "" } {
+        set utilization $_uti
+    }
         
     #---------------added by liusongzhi---------------------#
     set group 1 
@@ -1247,7 +1272,7 @@ package provide Ixia 1.0
     set udf1Repeat  1
     set udf1Size  8
     set udf1CounterMode udfCounterMode
-        
+
     set udf2       0
     set udf2Offset 0
     set udf2ContinuousCount   0
@@ -1329,7 +1354,7 @@ package provide Ixia 1.0
     }
     
     if {[llength $framelen] == 1} {
-        stream config -framesize $framelen
+        stream config -framesize [expr $framelen + 4]
         stream config -frameSizeType sizeFixed
     } else {
         stream config -framesize 318
@@ -1403,16 +1428,15 @@ package provide Ixia 1.0
     }
 
     if {$data == 0} {
-            stream config -patternType  nonRepeat
-            stream config -dataPattern  allZeroes
-            stream config -pattern       "00 00"
+		stream config -patternType  nonRepeat
+		stream config -dataPattern  allZeroes
+		stream config -pattern       "00 00"
     } else {
-            stream config -patternType  nonRepeat
-            stream config -pattern $data
-            stream config -dataPattern 18
+		stream config -patternType  nonRepeat
+		stream config -pattern $data
+		stream config -dataPattern 18
     }
-    
-    
+     
     if { $ipmode != 0} {
         if {$ipbitsoffset1 > 7} { set ipbitsoffset1 7 }
         if {$ipbitsoffset2 > 7} { set ipbitsoffset2 7 }
@@ -1492,9 +1516,7 @@ package provide Ixia 1.0
                 set retVal $::CIxia::gIxia_ERR
             }
         }
-    }
-    
-
+    }  
 
     #UDF Config
     if {$udf1 == 1} {
@@ -1540,7 +1562,6 @@ package provide Ixia 1.0
         }
     }
    
-    
     #Table UDF Config        
     tableUdf setDefault        
     tableUdf clearColumns      
@@ -1551,7 +1572,6 @@ package provide Ixia 1.0
         set retVal $::CIxia::gIxia_ERR
     }
         
-
     if {[string match [config_stream -StreamId $_streamid] $::CIxia::gIxia_ERR]} {
         set retVal $::CIxia::gIxia_ERR
     }
@@ -1568,7 +1588,7 @@ package provide Ixia 1.0
 #Desc: set TCP stream
 #Args: args
 #      -Name: the name of TCP stream
-#       -FrameLen: frame length
+#      -FrameLen: frame length
 #      -Utilization: send utilization(percent), default 100
 #      -TxMode: send mode,[0|1] 0 - continuous，1 - burst
 #      -BurstCount: burst package count
@@ -1579,7 +1599,7 @@ package provide Ixia 1.0
 #      -Des_port: destionation _port, default 2000
 #      -Src_port: source _port，default 2000
 #      -Tos: tos，default 0
-#       -ipmode: how to change the IP
+#      -ipmode: how to change the IP
 #               0                          no change (default)
 #               ip_inc_src_ip              source IP increment
 #               ip_inc_dst_ip              destination IP increment
@@ -1605,6 +1625,9 @@ package provide Ixia 1.0
     set txmode          0
     set framerate       0
     set utilization     100
+    if { $_uti != "" } {
+        set utilization $_uti
+    }
     set burstcount      1
     set srcport         2000
     set desport         2000     
@@ -1625,10 +1648,12 @@ package provide Ixia 1.0
     set iphlen      5
     set dscp        0
     set tot         0
+
     set id          1
     set mayfrag     0
     set lastfrag    0
     set fragoffset  0
+
     set ttl         255        
     set pro         4
     set change      0
@@ -1735,7 +1760,7 @@ package provide Ixia 1.0
     }
     
     if {[llength $framelen] == 1} {
-        stream config -framesize $framelen
+        stream config -framesize [expr $framelen + 4]
         stream config -frameSizeType sizeFixed
     } else {
         stream config -framesize 318
@@ -1793,7 +1818,7 @@ package provide Ixia 1.0
                 lappend tcpFlag [expr $tcpopt / $i % 2 ]
             }
         }
-        
+
         for { set i 0} { $i < 6} {incr i} {
             set tmp [lindex $tcpFlag $i]
             if {$tmp} { 
@@ -1809,8 +1834,6 @@ package provide Ixia 1.0
         }
     }
     
-    
-
     if [tcp set $_chassis $_card $_port] {
        error "Unable to set Tcp configs to IxHal!"
        set retVal $::CIxia::gIxia_ERR
@@ -1825,6 +1848,7 @@ package provide Ixia 1.0
                 error "Unable to set vlan configs to IxHal!"
                 set retVal $::CIxia::gIxia_ERR
         }
+
     }
     switch $cfi {
         0 {vlan config -cfi resetCFI}
@@ -1835,6 +1859,7 @@ package provide Ixia 1.0
         if {$ipbitsoffset1 > 7} { set ipbitsoffset1 7 }
         if {$ipbitsoffset2 > 7} { set ipbitsoffset2 7 }
         switch $ipmode {    
+
             ip_inc_src_ip  {
                 set udf1 1
                 set udf1Offset 26
@@ -1843,6 +1868,7 @@ package provide Ixia 1.0
                 set udf1Step   $stepcount1                                
                 set udf1Repeat $ipcount1
                 set udf1Size [expr 32 - $ipbitsoffset1]                                
+
             }
             ip_inc_dst_ip  { 
                 set udf2 1
@@ -1852,6 +1878,8 @@ package provide Ixia 1.0
                 set udf2Step $stepcount2
                 set udf2Repeat $ipcount2
                 set udf2Size [expr 32 - $ipbitsoffset2]        
+
+
             }
             ip_dec_src_ip  { 
                 set udf1 1
@@ -1861,6 +1889,7 @@ package provide Ixia 1.0
                 set udf1Step $stepcount1
                 set udf1Repeat $ipcount1
                 set udf1Size [expr 32 - $ipbitsoffset1]    
+
             }
             ip_dec_dst_ip  {
                 set udf2 1
@@ -1870,6 +1899,7 @@ package provide Ixia 1.0
                 set udf2Step $stepcount2
                 set udf2Repeat $ipcount2
                 set udf2Size [expr 32 - $ipbitsoffset2]    
+
             }
             ip_inc_src_ip_and_dst_ip  { 
                 set udf1 1
@@ -1879,7 +1909,7 @@ package provide Ixia 1.0
                 set udf1Step $stepcount1
                 set udf1Repeat $ipcount1
                 set udf1Size [expr 32 - $ipbitsoffset1]    
-                
+             
                 set udf2 1
                 set udf2Offset 30
                 set udf2InitVal $hexDesIp 
@@ -1941,8 +1971,8 @@ package provide Ixia 1.0
         udf config -continuousCount  false
         
         switch $udf2ChangeMode {
-                0 {udf config -updown uuuu}
-                1 {udf config -updown dddd}
+			0 {udf config -updown uuuu}
+			1 {udf config -updown dddd}
         }
         udf config -bitOffset   $ipbitsoffset2
         udf config -initval $udf2InitVal
@@ -1955,8 +1985,7 @@ package provide Ixia 1.0
             set retVal $::CIxia::gIxia_ERR
         }
     }
- 
-    
+  
     #Table UDF Config        
     tableUdf setDefault        
     tableUdf clearColumns      
@@ -1977,7 +2006,6 @@ package provide Ixia 1.0
     # }
 
     #_port config -speed $_portspeed
-
     if {$data == 0} {
         stream config -patternType patternTypeRandom
     } else {
@@ -1985,7 +2013,6 @@ package provide Ixia 1.0
         stream config -pattern $data
         stream config -dataPattern 18
     }
-    
     
     # stream set $_chassis $_card $_port $streamID
     # stream write $_chassis $_card $_port $streamID
@@ -1999,7 +2026,6 @@ package provide Ixia 1.0
 
     return $retVal
 }
-
 
 ###########################################################################################
 #@@Proc
@@ -2015,7 +2041,7 @@ package provide Ixia 1.0
 #      -DesIP: destination ip，default 0.0.0.0
 #      -SrcIP: source ip, default 0.0.0.0
 #      -Tos: tos，default 0
-#       -ipmode: how to change the IP
+#      -ipmode: how to change the IP
 #               0                          no change (default)
 #               ip_inc_src_ip              source IP increment
 #               ip_inc_dst_ip              destination IP increment
@@ -2023,14 +2049,14 @@ package provide Ixia 1.0
 #               ip_dec_dst_ip              destination IP decrement
 #               ip_inc_src_ip_and_dst_ip   both source and destination IP increment
 #               ip_dec_src_ip_and_dst_ip   both source and destination IP decrement
-#       -ipbitsoffset1: bitoffset,0 by default 
-#       -ipbitsoffset2: bitoffset,0 by default
-#       -ipcount1:  the count that the first ip stream will vary,0 by default 
+#      -ipbitsoffset1: bitoffset,0 by default 
+#      -ipbitsoffset2: bitoffset,0 by default
+#      -ipcount1:  the count that the first ip stream will vary,0 by default 
 #      -ipcount2:  the count that the second ip stream will vary,0 by default
 #      -stepcount1: the step size that the first ip will vary, it should be the power of 2, eg. 1,2,4,8..., 0 by default means no change
-#       -stepcount2: the step size that the second ip will vary,it should be the power of 2, eg. 1,2,4,8..., 0 by default means no change
+#      -stepcount2: the step size that the second ip will vary,it should be the power of 2, eg. 1,2,4,8..., 0 by default means no change
 #      -_portSpeed: _port speed，default 100
-#Usage: _port1 CreateUDPStream -SrcMac 0010-01e9-0011 -DesMac ffff-ffff-ffff
+#Usage:_port1 CreateUDPStream -SrcMac 0010-01e9-0011 -DesMac ffff-ffff-ffff
 ###########################################################################################
 ::itcl::body CIxiaPortETH::CreateUDPStream { args } {
     Log "Create UDP stream..."
@@ -2041,6 +2067,9 @@ package provide Ixia 1.0
     set txmode              0
     set framerate           0 
     set utilization         100
+    if { $_uti != "" } {
+        set utilization $_uti
+    }
     set burstcount          1
     set srcport             2000
     set desport             2000     
@@ -2061,10 +2090,12 @@ package provide Ixia 1.0
     set iphlen      5
     set dscp        0
     set tot         0
+
     set id          1
     set mayfrag     0
     set lastfrag    0
     set fragoffset  0
+
     set ttl         255        
     set pro         4
     set change      0
@@ -2073,9 +2104,7 @@ package provide Ixia 1.0
     set strframenum  100
     set data        0 
     set ipmode      0
-    
-    
-     set udf1                   0
+    set udf1                   0
     set udf1Offset              0
     set udf1ContinuousCount     0
     set udf1InitVal             {00}
@@ -2130,13 +2159,12 @@ package provide Ixia 1.0
     set vlan $vlanid
     set pri  $priority
 
-   #Setting the _streamid.
-   set streamCnt 1 
-   for {set i 1 } {1} {incr i} {
-        if {[stream get $_chassis $_card $_port $i] == 0 } {incr streamCnt} else { break}
-   }
-   set _streamid $streamCnt
-
+	#Setting the _streamid.
+	set streamCnt 1 
+	for {set i 1 } {1} {incr i} {
+		if {[stream get $_chassis $_card $_port $i] == 0 } {incr streamCnt} else { break}
+	}
+	set _streamid $streamCnt
 
     #Define Stream parameters.
     stream setDefault        
@@ -2167,7 +2195,7 @@ package provide Ixia 1.0
     }
     
     if {[llength $framelen] == 1} {
-        stream config -framesize $framelen
+        stream config -framesize [expr $framelen + 4]
         stream config -frameSizeType sizeFixed
     } else {
         stream config -framesize 318
@@ -2234,13 +2262,13 @@ package provide Ixia 1.0
         if {$ipbitsoffset2 > 7} { set ipbitsoffset2 7 }
         switch $ipmode {
             ip_inc_src_ip  {
-                set udf1 1
-                set udf1Offset 26
-                set udf1InitVal $hexSrcIp
-                set udf1ChangeMode 0
-                set udf1Step   $stepcount1                                
-                set udf1Repeat $ipcount1
-                set udf1Size [expr 32 - $ipbitsoffset1]                                
+				set udf1 1
+				set udf1Offset 26
+				set udf1InitVal $hexSrcIp
+				set udf1ChangeMode 0
+				set udf1Step   $stepcount1                                
+				set udf1Repeat $ipcount1
+				set udf1Size [expr 32 - $ipbitsoffset1]                                
             }
             ip_inc_dst_ip  { 
                 set udf2 1
@@ -2276,8 +2304,7 @@ package provide Ixia 1.0
                 set udf1ChangeMode 0
                 set udf1Step $stepcount1
                 set udf1Repeat $ipcount1
-                set udf1Size [expr 32 - $ipbitsoffset1]    
-                
+                set udf1Size [expr 32 - $ipbitsoffset1]       
                 set udf2 1
                 set udf2Offset 30
                 set udf2InitVal $hexDesIp 
@@ -2293,8 +2320,7 @@ package provide Ixia 1.0
                 set udf1ChangeMode 1
                 set udf1Step $stepcount1
                 set udf1Repeat $ipcount1
-                set udf1Size [expr 32 - $ipbitsoffset1]    
-                
+                set udf1Size [expr 32 - $ipbitsoffset1]                   
                 set udf2 1
                 set udf2Offset 30
                 set udf2InitVal $hexDesIp 
@@ -2337,7 +2363,6 @@ package provide Ixia 1.0
         udf config -enable true
         udf config -offset $udf2Offset
         udf config -continuousCount  false
-        
         switch $udf2ChangeMode {
                 0 {udf config -updown uuuu}
                 1 {udf config -updown dddd}
@@ -2366,9 +2391,6 @@ package provide Ixia 1.0
         stream config -pattern $data
         stream config -dataPattern 18
     }
-                                 
-    
-    
     # stream set $_chassis $_card $_port $streamID
     # stream write $_chassis $_card $_port $streamID
 
@@ -2389,7 +2411,7 @@ package provide Ixia 1.0
 #Name: CreateIPv6Stream
 #Desc: set IPv6 stream
 #Args: 
-#       -name:    IP Stream name
+#      -name:    IP Stream name
 #      -frameLen: frame length
 #      -utilization: send utilization(percent), default 100
 #      -txMode: send mode,[0|1] default 0 - continuous 1 - burst
@@ -2397,14 +2419,14 @@ package provide Ixia 1.0
 #      -desMac: destination MAC default ffff-ffff-ffff
 #      -srcMac: source MAC default 0-0-0
 #      -_portSpeed: _port speed default 100                   
-#       -data: content of frame, 0 by default means random
+#      -data: content of frame, 0 by default means random
 #             example: -data 0   ,  the data pattern will be random    
 #                      -data abac,  use the "abac" as the data pattern
 #     -VlanID: default 0
 #     -Priority: the priority of vlan, 0 by default
 #     -DesIP: the destination ipv6 address,the input format should be X:X::X:X
 #     -SrcIP: the source ipv6 address, the input format should be X:X::X:X
-#      -nextHeader: the next header, 59 by default
+#     -nextHeader: the next header, 59 by default
 #     -hopLimit: 255 by default
 #     -traffClass: 0 by default
 #     -flowLable: 0 by default
@@ -2415,10 +2437,12 @@ package provide Ixia 1.0
 ::itcl::body CIxiaPortETH::CreateIPv6Stream { args } {
     Log  "Create IPv6 stream..."
     set retVal $::CIxia::gIxia_OK
-
     set framelen   128
     set framerate  0
     set utiliztion 100
+    if { $_uti != "" } {
+        set utilization $_uti
+    }
     set txmode     0
     set burstcount 1
     set desmac       ffff-ffff-ffff
@@ -2428,7 +2452,6 @@ package provide Ixia 1.0
     set portspeed    100
     set data         0
     set signature    0 
-
     set name       ""
     set vlan       0
     set vlanid     0
@@ -2442,12 +2465,11 @@ package provide Ixia 1.0
     set enable     true
     set value      {{00 }}
     set strframenum    100
-    
     set nextheader  59
     set hoplimit    255
     set traffclass  0 
     set flowlabel   0 
-            
+	
     set udf1        0
     set udf1offset  0
     set udf1len     1
@@ -2522,7 +2544,7 @@ package provide Ixia 1.0
         if {[stream get $_chassis $_card $_port $i] == 0 } {incr streamCnt} else { break}
     }
     set _streamid $streamCnt
-  
+ 
     #Define Stream parameters.
     stream setDefault        
     stream config -enable $enable
@@ -2553,7 +2575,7 @@ package provide Ixia 1.0
     }
     
     if {[llength $framelen] == 1} {
-        stream config -framesize $framelen
+        stream config -framesize [expr $framelen + 4]
         stream config -frameSizeType sizeFixed
     } else {
         stream config -framesize 318
@@ -2561,9 +2583,8 @@ package provide Ixia 1.0
         stream config -frameSizeMIN [lindex $framelen 0]
         stream config -frameSizeMAX [lindex $framelen 1]
     }
-   
     #stream config -frameType $type
-    
+ 
     #Define protocol parameters 
      protocol setDefault        
      protocol config -name ipV6
@@ -2605,14 +2626,13 @@ package provide Ixia 1.0
         if [vlan set $_chassis $_card $_port] {
             error "Unable to set vlan configs to IxHal!"
             set retVal $::CIxia::gIxia_ERR
-        }
-    
+        }    
         switch $cfi {
             0 {vlan config -cfi resetCFI}
             1 {vlan config -cfi setCFI}
         }
     }
-    
+	
     #UDF Config
     if {$udf1 == 1} {
         udf setDefault        
@@ -2709,7 +2729,7 @@ package provide Ixia 1.0
         udf config -step    $udf5step
         udf set 5
     }        
-    
+   
     #Table UDF Config        
     if { $tableudf == 1 } {
         tableUdf setDefault        
@@ -2759,7 +2779,7 @@ package provide Ixia 1.0
 #Name: CreateIPv6TCPStream
 #Desc: set IPv6 TCP stream
 #Args: 
-#       -name:    IP Stream name
+#      -name:    IP Stream name
 #      -frameLen: frame length
 #      -utilization: send utilization(percent), default 100
 #      -txMode: send mode,[0|1] default 0 - continuous 1 - burst
@@ -2767,18 +2787,18 @@ package provide Ixia 1.0
 #      -desMac: destination MAC default ffff-ffff-ffff
 #      -srcMac: source MAC default 0-0-0
 #      -_portSpeed: _port speed default 100                   
-#       -data: content of frame, 0 by default means random
+#      -data: content of frame, 0 by default means random
 #             example: -data 0   ,  the data pattern will be random    
 #                      -data abac,  use the "abac" as the data pattern
 #     -VlanID: default 0
 #     -Priority: the priority of vlan, 0 by default
 #     -DesIP: the destination ipv6 address,the input format should be X:X::X:X
 #     -SrcIP: the source ipv6 address, the input format should be X:X::X:X
-#      -nextHeader: the next header, 59 by default
+#     -nextHeader: the next header, 59 by default
 #     -hopLimit: 255 by default
 #     -traffClass: 0 by default
 #     -flowLable: 0 by default
-#      -ipmode: how to change the IP
+#     -ipmode: how to change the IP
 #               0                          no change (default)
 #               ip_inc_src_ip              source IP increment
 #               ip_inc_dst_ip              destination IP increment
@@ -2786,13 +2806,13 @@ package provide Ixia 1.0
 #               ip_dec_dst_ip              destination IP decrement
 #               ip_inc_src_ip_and_dst_ip   both source and destination IP increment
 #               ip_dec_src_ip_and_dst_ip   both source and destination IP decrement
-#      -ipcount1:  the count that the first ip stream will vary,0 by default 
+#     -ipcount1:  the count that the first ip stream will vary,0 by default 
 #     -ipcount2:  the count that the second ip stream will vary,0 by default
 #     -stepcount1: the step size that the first ip will vary, it should be the power of 2, eg. 1,2,4,8..., 0 by default means no change
-#      -stepcount2: the step size that the second ip will vary,it should be the power of 2, eg. 1,2,4,8..., 0 by default means no change
+#     -stepcount2: the step size that the second ip will vary,it should be the power of 2, eg. 1,2,4,8..., 0 by default means no change
 #     -srcport: TCP source port , 2000 by default
 #     -desport: TCP destination port, 2000 by default
-#      -tcpseq:  TCP sequenceNumber, 123456 by default
+#     -tcpseq:  TCP sequenceNumber, 123456 by default
 #     -tcpack:  TCP acknowledgementNumber, 234567 by default
 #     -tcpopts: TCP Flag, 16 (push) by default 
 #     -tcpwindow: TCP window, 4096 by default
@@ -2807,6 +2827,9 @@ package provide Ixia 1.0
     set framelen   128
     set framerate  0
     set utiliztion 100
+    if { $_uti != "" } {
+        set utilization $_uti
+    }
     set txmode     0
     set burstcount 1
     set desmac       ffff-ffff-ffff
@@ -2816,8 +2839,8 @@ package provide Ixia 1.0
     set portspeed  100
     set data 0
     set signature 0 
-
     set name      ""
+	
     set vlan       0
     set vlanid     0
     set pri        0
@@ -2891,20 +2914,19 @@ package provide Ixia 1.0
     set tcpwindow 4096
     set tcpFlag ""
     
-    
     #get_params $args
-    
+   
     set argList ""
     set temp ""
     for {set i 0} { $i < [llength $args]} {incr i} {
-    lappend temp [ string tolower [lindex $args $i]]
+		lappend temp [ string tolower [lindex $args $i]]
     }
     set tmp [split $temp \-]
     set tmp_len [llength $tmp]
     for {set i 0 } {$i < $tmp_len} {incr i} {
         set tmp_list [lindex $tmp $i]
         if {[llength $tmp_list] == 2} {
-                append argList " [lindex $tmp_list 0].arg"
+            append argList " [lindex $tmp_list 0].arg"
         }
     }
     while {[set result [cmdline::getopt temp $argList opt val]] > 0} {
@@ -2914,10 +2936,8 @@ package provide Ixia 1.0
    
     set srcmac [::ipaddress::format_mac_address $srcmac 6 ":"]
     set desmac [::ipaddress::format_mac_address $desmac 6 ":"]
-
     set vlan $vlanid
     set pri  $priority
-
 
     #Setting the _streamid.
     set streamCnt 1 
@@ -2925,7 +2945,6 @@ package provide Ixia 1.0
         if {[stream get $_chassis $_card $_port $i] == 0 } {incr streamCnt} else { break}
     }
     set _streamid $streamCnt
-
 
     #Define Stream parameters.
     stream setDefault        
@@ -2956,7 +2975,7 @@ package provide Ixia 1.0
     }
    
     if {[llength $framelen] == 1} {
-        stream config -framesize $framelen
+        stream config -framesize [expr $framelen + 4]
         stream config -frameSizeType sizeFixed
     } else {
         stream config -framesize 318
@@ -3046,9 +3065,6 @@ package provide Ixia 1.0
            1 {vlan config -cfi setCFI}
        }
     }
-
-
-   
 
     #TCP settings
     tcp setDefault
@@ -3233,7 +3249,7 @@ package provide Ixia 1.0
 #Name: CreateIPv6UDPStream
 #Desc: set IPv6 UDP stream
 #Args: 
-#       -name:    IP Stream name
+#      -name:    IP Stream name
 #      -frameLen: frame length
 #      -utilization: send utilization(percent), default 100
 #      -txMode: send mode,[0|1] default 0 - continuous 1 - burst
@@ -3241,14 +3257,14 @@ package provide Ixia 1.0
 #      -desMac: destination MAC default ffff-ffff-ffff
 #      -srcMac: source MAC default 0-0-0
 #      -_portSpeed: _port speed default 100                   
-#       -data: content of frame, 0 by default means random
+#      -data: content of frame, 0 by default means random
 #             example: -data 0   ,  the data pattern will be random    
 #                      -data abac,  use the "abac" as the data pattern
 #     -VlanID: default 0
 #     -Priority: the priority of vlan, 0 by default
 #     -DesIP: the destination ipv6 address,the input format should be X:X::X:X
 #     -SrcIP: the source ipv6 address, the input format should be X:X::X:X
-#      -nextHeader: the next header, 59 by default
+#     -nextHeader: the next header, 59 by default
 #     -hopLimit: 255 by default
 #     -traffClass: 0 by default
 #     -flowLabel: 0 by default
@@ -3266,6 +3282,9 @@ package provide Ixia 1.0
     set framelen   128
     set framerate  0
     set utiliztion 100
+    if { $_uti != "" } {
+        set utilization $_uti
+    }
     set txmode     0
     set burstcount 1
     set desmac       ffff-ffff-ffff
@@ -3292,8 +3311,6 @@ package provide Ixia 1.0
     set hoplimit    255
     set traffclass  0 
     set flowlabel   0 
-    
-    
     set udf1       0
     set udf1offset 0
     set udf1len    1
@@ -3358,11 +3375,9 @@ package provide Ixia 1.0
     while {[set result [cmdline::getopt temp $argList opt val]] > 0} {
         set $opt $val        
     }
-     
-     
+         
     set srcmac [::ipaddress::format_mac_address $srcmac 6 ":"]
     set desmac [::ipaddress::format_mac_address $desmac 6 ":"]
- 
     set vlan $vlanid
     set pri  $priority
 
@@ -3404,7 +3419,7 @@ package provide Ixia 1.0
     }
     
     if {[llength $framelen] == 1} {
-        stream config -framesize $framelen
+        stream config -framesize [expr $framelen + 4]
         stream config -frameSizeType sizeFixed
     } else {
         stream config -framesize 318
@@ -3611,8 +3626,7 @@ package provide Ixia 1.0
 ###########################################################################################
 ::itcl::body CIxiaPortETH::SetErrorPacket {args} {
     Log   "set errors packet..."
-    set retVal $::CIxia::gIxia_OK
-  
+    set retVal $::CIxia::gIxia_OK 
     set tmpList     [lrange $args 0 end]
     set idxxx      0
     set tmpllength [llength $tmpList]
@@ -3628,18 +3642,17 @@ package provide Ixia 1.0
     # puts $tmpllength
     while { $tmpllength > 0  } {
         set cmdx [string tolower [lindex $args $idxxx]]
-        #set argx [lindex $args [expr $idxxx + 1]]
-       
+        #set argx [lindex $args [expr $idxxx + 1]]       
         case $cmdx   {
             -crcerror      { set Crc 1 }
             -dribblebits  {set Dribble 1}
             -alignerror    {set Align 1}
-            -jumbo    {set Jumbo 1}
-            
+            -jumbo    {set Jumbo 1}            
             default   {
                 set retVal $::CIxia::gIxia_ERR
                 IxPuts -red "Error : cmd option $cmdx does not exist"
                 return $retVal
+
             }
         }
         # incr idxxx  +2
@@ -3698,8 +3711,8 @@ package provide Ixia 1.0
 ::itcl::body CIxiaPortETH::SetFlowCtrlMode {args} {
     Log   "set flow control mode..."
     set retVal $::CIxia::gIxia_OK
-
     # enable flow control
+
     if { [llength $args] > 0} {
         set FlowCtrlMode $args
     } else { 
@@ -3715,9 +3728,14 @@ package provide Ixia 1.0
     } 
     
     if { [port set $_chassis $_card $_port] } {
+
         IxPuts -red "failed to set port configuration on port $_chassis $_card $_port"
         set retVal $::CIxia::gIxia_ERR
+
+
+
     }
+
 
     lappend portList [list $_chassis $_card $_port]
     if [ixWritePortsToHardware portList -noProtocolServer] {
@@ -3767,11 +3785,11 @@ package provide Ixia 1.0
 #Desc: change multi-field value in the existing stream
 #Args: 
 #     -srcmac {mode step count}
-#       -desmac {mode step count}
-#      -srcip  {mode step count}
-#      -desip  {mode step count}
-#      -srcport  {mode step count}
-#      -desport {mode step count}
+#     -desmac {mode step count}
+#     -srcip  {mode step count}
+#     -desip  {mode step count}
+#     -srcport  {mode step count}
+#     -desport {mode step count}
 #     mode: 
 #     random incr decr list
 #    
@@ -3780,7 +3798,7 @@ package provide Ixia 1.0
 ::itcl::body CIxiaPortETH::SetMultiModifier {args} {    
     Log   "set multi-field value..."
     set retVal $::CIxia::gIxia_OK
-   
+ 
     set srcMac      ""
     set desMac      ""
     set srcIp       "" 
@@ -3788,7 +3806,7 @@ package provide Ixia 1.0
     set srcPort     ""
     set desPort     ""
     set counterIndex 0
-   
+
     set udf1                0
     set udf1Offset          0
     set udf1ContinuousCount 0
@@ -3798,7 +3816,7 @@ package provide Ixia 1.0
     set udf1Repeat          1
     set udf1Size            8
     set udf1CounterMode     udfCounterMode
-    
+
     set udf2                0
     set udf2Offset          0
     set udf2ContinuousCount 0
@@ -3808,7 +3826,7 @@ package provide Ixia 1.0
     set udf2Repeat          1
     set udf2Size            8
     set udf2CounterMode     udfCounterMode
-    
+   
     set udf3                0
     set udf3Offset          0
     set udf3ContinuousCount 0
@@ -3818,7 +3836,7 @@ package provide Ixia 1.0
     set udf3Repeat          1
     set udf3Size            8
     set udf3CounterMode     udfCounterMode
- 
+
     set udf4                0
     set udf4Offset          0
     set udf4ContinuousCount 0
@@ -3828,11 +3846,13 @@ package provide Ixia 1.0
     set udf4Repeat          1
     set udf4Size            8
     set udf4CounterMode     udfCounterMode        
+
     set tableUdf            0
-    
+   
     set tmpList             [lrange $args 0 end]
     set idxxx               0
     set tmpllength          [llength $tmpList]
+
     #  Set the defaults
     set Default    1
 
@@ -4199,7 +4219,6 @@ package provide Ixia 1.0
         error  "Unable to set streams to IxHal!"
         set retVal $::CIxia::gIxia_ERR
     }
-
     if [stream write $_chassis $_card $_port $_streamid] {
         error  "Unable to write streams to IxHal!"
         set retVal $::CIxia::gIxia_ERR
@@ -4224,6 +4243,7 @@ package provide Ixia 1.0
 ::itcl::body CIxiaPortETH::SetPortAddress {args} {
     Log "Set the IP address on $_chassis $_card $_port..."
     set retVal $::CIxia::gIxia_OK
+
     set macaddress 0000-0000-1111
     set ipaddress 0.0.0.0 
     set netmask 255.255.255.0 
@@ -4233,6 +4253,7 @@ package provide Ixia 1.0
     set flag 0
     
     #Start to fetch param
+
     set argList ""
     set temp ""
     for {set i 0} { $i < [llength $args]} {incr i} {
@@ -4249,7 +4270,7 @@ package provide Ixia 1.0
     while {[set result [cmdline::getopt temp $argList opt val]] > 0} {
         set $opt $val        
     }
-    
+
     #End of fetching param
 
     #Start to format the macaddress and IP netmask
@@ -4270,6 +4291,7 @@ package provide Ixia 1.0
             }        
         }
     }
+
 
     #End of formatting macaddress and IP netmask
     port setFactoryDefaults $_chassis $_card $_port
@@ -4355,8 +4377,6 @@ package provide Ixia 1.0
     set replyallarp 0 
     set vlan 0 
     set flag 0 
-
-
     #Start to fetch param
     set argList ""
     set temp ""
@@ -4371,12 +4391,12 @@ package provide Ixia 1.0
                 append argList " [lindex $tmp_list 0].arg"
         }
     }
+	
     while {[set result [cmdline::getopt temp $argList opt val]] > 0} {
         set $opt $val        
     }
-    
+   
     #End of fetching param
-
     #Start to format the macaddress
     set macaddress [::ipaddress::format_mac_address $macaddress 6 ":"]
 
@@ -4399,12 +4419,11 @@ package provide Ixia 1.0
     interfaceIpV6 config -ipAddress $ipaddress
     interfaceIpV6 config -maskWidth $prefixlen
 
-    
     if [interfaceEntry addItem addressTypeIpV6] {
         error "Error interfaceEntry addItem addressTypeIpV6 on $_chassis $_card $_port"
         set retVal $::CIxia::gIxia_ERR
     }
-    
+ 
     interfaceEntry setDefault
     interfaceEntry config -enable true
     interfaceEntry config -description "_port $ipaddress/:01 Interface-1"
@@ -4416,19 +4435,16 @@ package provide Ixia 1.0
     interfaceEntry config -vlanPriority                       0
     interfaceEntry config -vlanTPID                           0x8100
 
-    
     if [interfaceTable addInterface] {
         error "Error interfaceTable addInterface on $_chassis $_card $_port"
         set retVal $::CIxia::gIxia_ERR
     }
-    
-    
+   
     if [interfaceTable write] {
         error "Error interfaceTable write to $_chassis $_card $_port"
         set retVal $::CIxia::gIxia_ERR
-    
     }
-    
+ 
     protocolServer setDefault
     protocolServer config -enableArpResponse $replyallarp
     protocolServer config -enablePingResponse   true
@@ -4441,6 +4457,7 @@ package provide Ixia 1.0
         set retVal $::CIxia::gIxia_ERR
     }
     #End of configuring  IP / Mac / gateway / autoArp / replyallarp
+
     return $retVal
 }
 
@@ -4471,8 +4488,7 @@ package provide Ixia 1.0
         stream config -frameSizeType 1 
         stream config -frameSizeMIN $minSize
         stream config -frameSizeMAX $maxSize
-        stream config -frameSizeStep $stepSize
-        
+        stream config -frameSizeStep $stepSize        
     } else {
         stream config -frameSizeType 0 
         stream config -framesize $frameSize
@@ -4500,26 +4516,25 @@ package provide Ixia 1.0
 #Name: DeleteStream
 #Desc: to disable a specific stream of the target port
 #Args: -minindex: The first stream ID, start from 1. This could be a stream's name.
-#       -maxindex: If the "minindex" is a digital, then this function will disable streams from "minindex" to "maxindex". 
+#      -maxindex: If the "minindex" is a digital, then this function will disable streams from "minindex" to "maxindex". 
 #                 If the "minindex" is a stream's name, then this option make no sense.
+
 #       
 #Usage: port1 DeleteStream -minindex 1 -maxindex 10
 #       port1 DeleteStream -minindex "stream_name"
 ###########################################################################################
 ::itcl::body CIxiaPortETH::DeleteStream {args} {
     Log "Disable the specific stream of $_chassis $_card $_port..."
-    set retVal $::CIxia::gIxia_OK
-    
+    set retVal $::CIxia::gIxia_OK    
     set minindex ""
     set maxindex ""
     set test ""
     set flag ""
-
     #Get param    
     set argList ""
     set temp ""
     for {set i 0} { $i < [llength $args]} {incr i} {
-    lappend temp [ string tolower [lindex $args $i]]
+		lappend temp [ string tolower [lindex $args $i]]
     }
     set tmp [split $temp \-]
     set tmp_len [llength $tmp]
@@ -4630,12 +4645,12 @@ package provide Ixia 1.0
             3 { set vfd1 "DecreState" }
             4 { set vfd1 "List"}
             default { set vfd1 "OffState" }
-        }
 
+        }
         set vfd1len $Range
         set vfd1offset [expr $Offset / 8]
         set vfd1start $Data
-        
+     
         #Added by zshan begin
         #Format the data, transform the input from {0x01 0x02} to {01 02} or to {{01} {02}}
 
@@ -4644,6 +4659,7 @@ package provide Ixia 1.0
         set lenData [llength $vfd1start]
         if { $Mode == 4 && [expr $lenData % $Range] == 0 } {
             set cnt [expr $lenData / $Range]
+
             for { set i 0} { $i < $cnt} { incr i $Range} {
                 lappend tempVfd1 [lrange $vfd1start $i [expr $Range - 1] ]
             }
@@ -4680,6 +4696,7 @@ package provide Ixia 1.0
                 }
                 #Added by zshan end
             }
+
             set vfd1len [llength $vfd1start]
             switch $vfd1len  {
                 1 { udf config -countertype c8  }
@@ -4695,7 +4712,7 @@ package provide Ixia 1.0
                 # default {error "-vfd1start only support 1-4 bytes, for example: {11 11 11 11}"}
                 #Added by zshan end
             }
-            
+         
             switch $vfd1 {
                 "IncreState" {udf config -updown uuuu}
                 "DecreState" {udf config -updown dddd}
@@ -4819,13 +4836,12 @@ package provide Ixia 1.0
     return $retVal
 }
 
-
 ####################################################################
 # 方法名称： SetVFD1
 # 方法功能： 设置指定网卡发包的源MAC地址(使用VFD1)
 # 入口参数：
 #        Offset 偏移，in byte,注意不要偏移位设置到报文的CHECKSUM的字节上。
-#       DataList   需要设定的数据list，如果超过6个字节则取前面6个字节
+#        DataList   需要设定的数据list，如果超过6个字节则取前面6个字节
 #        Mode   源MAC地址的变化形式，可取 
 #                                     HVFD_RANDOM,
 #                                     HVFD_INCR,
@@ -4976,8 +4992,8 @@ package provide Ixia 1.0
 #Desc: Get detailed byte infomation of specific packet. 
 #Args:
 #    -index : the index of packet in buffer. default 0.
-#       -offset: the bytes to be retrieved offset. default 0.
-#       -len   : how many bytes to be retrieved.
+#    -offset: the bytes to be retrieved offset. default 0.
+#    -len   : how many bytes to be retrieved.
 #                                 default 0, means the whole packet, from the offset byte to end.
 #Ret:a list include 1.   0 or 1, 0 means ok, 1 means error.
 #                   2.   a list include the specific byte content of the packet.
@@ -4986,15 +5002,14 @@ package provide Ixia 1.0
 ::itcl::body CIxiaPortETH::ReturnCapturePkt { {PktIndex 0} } {
     Log "Get capture packet..."
     set retVal $::CIxia::gIxia_OK
-
     set index      $PktIndex
     set offset     0
     set len        0
     set byteList   ""
     set PktCnt 0
-    
+  
     #get_params $args    
-
+	
     if {[capture get $_chassis $_card $_port]} {
         set retVal $::CIxia::gIxia_ERR
         error "get capture from $_chassis,$_card,$_port failed..."
@@ -5017,10 +5032,13 @@ package provide Ixia 1.0
     set data  [captureBuffer cget -frame]
     # if {$len == 0} {
         # set len [llength $data]
+
     # }
     # for {set i $offset} {$i < $len} {incr i} {
         # #lappend byteList "0x[lindex $data $i]"
         # lappend byteList " [lindex $data $i]"
+
+
     # }
     
     #error "Offset:$Offset, Index:$Index, Len:$Len"
@@ -5059,7 +5077,6 @@ package provide Ixia 1.0
 ###########################################################################################
 ::itcl::body CIxiaPortETH::GetPortInfo { args } {
     set retVal $::CIxia::gIxia_OK
-
     set RcvPkt ""
     set TmtPkt ""
     set RcvTrig ""
@@ -5079,7 +5096,6 @@ package provide Ixia 1.0
     
     set argList {RcvPkt.arg TmtPkt.arg RcvTrig.arg RcvTrigRate.arg RcvByte.arg RcvByteRate.arg RcvPktRate.arg TmtPktRate.arg \
                      CRC.arg CRCRate.arg Align.arg AlignRate.arg Oversize.arg OversizeRate.arg Undersize.arg UndersizeRate.arg}
-        
     set result [cmdline::getopt args $argList opt val]
     while {$result>0} {
         set $opt $val
@@ -5093,8 +5109,7 @@ package provide Ixia 1.0
     
     if [stat get statAllStats $_chassis $_card $_port] {
         error "Get all Event counters Error"
-        set retVal $::CIxia::gIxia_ERR
-        
+        set retVal $::CIxia::gIxia_ERR        
         return $retVal
     }
     
@@ -5139,8 +5154,8 @@ package provide Ixia 1.0
     }
     
     if [stat getRate allStats $_chassis $_card $_port] {
-            error "Get all Rate counters Error"
-            set retVal $::CIxia::gIxia_ERR
+        error "Get all Rate counters Error"
+        set retVal $::CIxia::gIxia_ERR
         return $retVal
     }
     
@@ -5187,6 +5202,7 @@ package provide Ixia 1.0
     
     return $::CIxia::gIxia_OK
 }
+
 ###########################################################################################
 #@@Proc
 #Name: GetPortStatus
@@ -5201,7 +5217,6 @@ package provide Ixia 1.0
 
 ::itcl::body CIxiaPortETH::GetPortStatus {  } {
     set retVal $::CIxia::gIxia_OK
-    
     if { [port get $_chassis $_card $_port] == 1} {
         set retVal  $::CIxia::gIxia_ERR
         error "can't get $_chassis $_card $_port."
@@ -5213,12 +5228,12 @@ package provide Ixia 1.0
         set retVal  down
     }
     if {$portState == 1} {
-        set retVal up
-    
+        set retVal up 
     }
-
+	
     return $retVal
 }
+
 ###########################################################################################
 #@@Proc
 #Name: Clear
@@ -5382,8 +5397,9 @@ package provide Ixia 1.0
 ######################################################################
 ::itcl::body CIxiaPortETH::AddOspfNei  { args }  {
     Log "***AddOspfNei $args"
-    global protocolServiceEnable
 
+    global protocolServiceEnable
+	
     set retVal $::CIxia::gIxia_OK
     set args [string tolower $args]
     if {[checkForMissingArgs "-neino -sutip -testip -sutrd -testrd" $args] == -1} {
@@ -5400,23 +5416,21 @@ package provide Ixia 1.0
     }
     
     Log " \n step Bring up Ospf Session... \n"
-    
+
     set ipAddr [list $testip $prefixlen]
     if {[intfConfig -port "$_chassis $_card $_port" -proto_type "ipv4" -ipConf $ipAddr -gateway $sutip] == -1} {
         Log  "Configure Port ($_chassis:$_card:$_port) IPAddress/mask ( $ipAddr ) error " warning
         return $::CIxia::gIxia_ERR  
+
     }
 
     after 1000
-    
     #This command configures the OSPF parameters.
     if {[rpe_ospf_conf $neino $_chassis $_card $_port $testarea $sutip $sutrd $testip $testrd $prefixlen] == -1} {     
         Log "Configure OSPF protcol on port ($_chassis:$_card:$_port) error" warning
         return $::CIxia::gIxia_ERR  
     }
-
     after 1000
-    
     if {[string match [config_port -ConfigType write] $::CIxia::gIxia_ERR]} {
         return $::CIxia::gIxia_ERR  
     }
@@ -5425,7 +5439,7 @@ package provide Ixia 1.0
     stat config -enableProtocolServerStats true
     stat config -enableOspfStats true
     stat set  $_chassis $_card $_port
-    
+   
     if {[StartRoutingEngine $portList "Ospf"] == -1} {
         Log "Could not Start Ospf for $portList at AddOspfNei procedure" warning
         return $::CIxia::gIxia_ERR
@@ -5436,14 +5450,14 @@ package provide Ixia 1.0
         set retVal $::CIxia::gIxia_ERR
     }
     Log "$_chassis $_card $_port - RETCODE $RETCODE"
-    
+ 
     stat get statAllStats $_chassis $_card $_port
     set nei     [stat cget -ospfFullNeighbors]
     set ses     [stat cget -ospfTotalSessions]
-    
+ 
     Log "Ospf FULL state Neighbous Number: $nei, Total session Number: $ses"
     Log "-----------------------------------------------------------------------"
-    
+ 
     return $retVal
 }
 
@@ -5457,11 +5471,10 @@ package provide Ixia 1.0
 ######################################################################
 ::itcl::body CIxiaPortETH::DeleteOspfNei {  args  } {
     global Ospfindex
-
+	
     set retVal $::CIxia::gIxia_OK
     set neino all
     get_params $args
-
     Log "***DeleteOspfNei -NeiNo $neino"
     # Select port for Ospf commands
     ospfServer   select  $_chassis $_card $_port
@@ -5470,7 +5483,7 @@ package provide Ixia 1.0
         ospfServer clearAllRouters
         ospfServer set
         ospfServer write
-
+		
         clearProtocolIndex "Ospf" $_chassis $_card $_port
         clearPoolInfo "Ospf" $_chassis $_card $_port
         clearService "Ospf" $_chassis $_card $_port
@@ -5514,7 +5527,6 @@ package provide Ixia 1.0
     return $retVal
 }
 
-
 ######################################################################
 #@@Proc 
 #Name: EditOspfNei
@@ -5532,27 +5544,23 @@ package provide Ixia 1.0
 ######################################################################
 ::itcl::body CIxiaPortETH::EditOspfNei { args } {
     global Ospfindex
-
     set args [string tolower $args]
     if {[checkForMissingArgs "-neino " $args] == -1} {
         return $::CIxia::gIxia_ERR
     }
     Log "***EditOspfNei $args"
     set retVal $::CIxia::gIxia_OK
-
     set networktype         Broadcast
     set updatenettype       0
     set hellointerval       10
     set updatehello         0
     set deadinterval        40
     set updatedead          0
-
     set pollinterval        60
     set retransmitinterval  5
     set transmitdelay       1
     set maxlsasperpacket    100
     get_params $args
- 
     if {[string match -nocase $networktype "Broadcast"]} {
         set networktype ospfBroadcast
     } elseif {[string match -nocase $networktype "PToP"]} {
@@ -5709,18 +5717,14 @@ package provide Ixia 1.0
     }
 
     Log "***AddOspfGrid $args"
-
     set metric         1
     #set routeorigin     ospfRouteOriginArea
-
     set gridrows         2
     set gridcolumns     2
     set abrasbrtag         0
-
     set startingrouterid    50.50.50.50
     set startingipaddress     80.1.1.0
     get_params $args
-
     if {[checkSessionCreated $_chassis $_card $_port $neino "Ospf"] == 0} {
        Log "Ospf Router $neino has not been created" warning
        return $::CIxia::gIxia_ERR   
@@ -5732,11 +5736,8 @@ package provide Ixia 1.0
     }
 
     addOspfGrid $_chassis $_card $_port $neino $gridrows $gridcolumns $startingrouterid $startingipaddress
-
     AddOspfGridInfo $neino $_chassis $_card $_port $gridno
-
     enableServiceOspf $_chassis $_card $_port
-
     if {[string match [config_port -ConfigType write] $::CIxia::gIxia_ERR]} {
         return $::CIxia::gIxia_ERR  
     }
@@ -5761,7 +5762,6 @@ package provide Ixia 1.0
 #Usage: port1 DeleteOspfGrid -NeiNo 1 -GridNo 10
 ######################################################################
 ::itcl::body CIxiaPortETH::DeleteOspfGrid  { args }  {
-    
     global GridOspfindex
     set retVal $::CIxia::gIxia_OK
 
@@ -5772,24 +5772,24 @@ package provide Ixia 1.0
     Log "***DeleteOspfGrid -NeiNo $neino -GridNo $gridno"
 
     if {$neino == "all" && $gridno != "all"} {
-       error "Ospf grid identifier $gridno , but not specify Ospf Session identifier "
-       return $::CIxia::gIxia_ERR 
+        error "Ospf grid identifier $gridno , but not specify Ospf Session identifier "
+        return $::CIxia::gIxia_ERR 
     }
 
     if {$neino == "all" && $gridno == "all"} {
-       DeleteOspfAllGrid $_chassis $_card $_port
+        DeleteOspfAllGrid $_chassis $_card $_port
     } elseif { $neino != "all" && $gridno == "all"} {
-       if {[checkSessionCreated $_chassis $_card $_port $neino "Ospf"] == 0} {
-          Log "Ospf session $neino has not been created" warning
-          return $::CIxia::gIxia_ERR 
-       }
-       DeleteOspfSessionGrid $_chassis $_card $_port $neino
+        if {[checkSessionCreated $_chassis $_card $_port $neino "Ospf"] == 0} {
+            Log "Ospf session $neino has not been created" warning
+            return $::CIxia::gIxia_ERR 
+        }
+        DeleteOspfSessionGrid $_chassis $_card $_port $neino
     } elseif {$neino != "all" && $gridno != "all"} {
-       if {[checkSessionCreated $_chassis $_card $_port $neino "Ospf"] == 0} {
-          Log "Ospf session $neino has not been created" warning
-          return $::CIxia::gIxia_ERR 
-       }
-       DeleteOspfSpecificGrid $_chassis $_card $_port $neino $gridno
+        if {[checkSessionCreated $_chassis $_card $_port $neino "Ospf"] == 0} {
+            Log "Ospf session $neino has not been created" warning
+            return $::CIxia::gIxia_ERR 
+        }
+        DeleteOspfSpecificGrid $_chassis $_card $_port $neino $gridno
     }
     if {[string match [config_port -ConfigType write] $::CIxia::gIxia_ERR]} {
         return $::CIxia::gIxia_ERR  
@@ -5823,7 +5823,6 @@ package provide Ixia 1.0
 ######################################################################
 ::itcl::body CIxiaPortETH::AddOspfAse { args }  {
     set retVal $::CIxia::gIxia_OK
-
     set args [string tolower $args]
     if {[checkForMissingArgs "-neino -aseid -firstip" $args] == -1} {
        return $::CIxia::gIxia_ERR
@@ -5858,7 +5857,6 @@ package provide Ixia 1.0
 
     # Select the port and clear all defined routers
     ospfServer select $_chassis $_card $_port
-
     ospfRouteRange   setDefault
     ospfRouteRange   config     -enable                 true
     ospfRouteRange   config     -routeOrigin            $metrictype
@@ -5870,7 +5868,7 @@ package provide Ixia 1.0
 
     if {[ospfServer getRouter $neino]} {
        Log "Get Ospf router $neino error " warning
-       return $::CIxia::gIxia_ERR       
+       return $::CIxia::gIxia_ERR      
     }
 
     ospfRouter config  -enable true
@@ -5882,6 +5880,7 @@ package provide Ixia 1.0
 
     if {[string match [config_port -ConfigType write] $::CIxia::gIxia_ERR]} {
        return $::CIxia::gIxia_ERR  
+
     }
     if {[StartRoutingEngine $portList "Ospf"] == -1} {
        Log "Could not Start Ospf for $portList" warning
@@ -5906,6 +5905,7 @@ package provide Ixia 1.0
 ######################################################################
 ::itcl::body CIxiaPortETH::AddOspfSummary   { args }  {
     set retVal $::CIxia::gIxia_OK
+
     set args [string tolower $args]
     if {[checkForMissingArgs "-neino -summaryid -firstip" $args] == -1} {
        return $::CIxia::gIxia_ERR
@@ -5931,7 +5931,6 @@ package provide Ixia 1.0
 
     # Select the port and clear all defined routers
     ospfServer select $_chassis $_card $_port
-
     ospfRouteRange   setDefault
     ospfRouteRange   config     -enable                 true
     ospfRouteRange   config     -routeOrigin            "ospfRouteOriginArea"
@@ -5981,10 +5980,13 @@ package provide Ixia 1.0
 #                   2   ripReceiveVersion2      (default) RIP Version 2 messages only.
 #                   3   ripReceiveVersion1and2  Both RIP version messages.
 #           -ResponseMode :
+
+
 #                         0     ripDefault              
 #                         1     ripSplitHorizon         
 #                         2     ripPoisonReverse        
 #                         3     ripSplitHorizonSpaceSaver  (default)
+
 #                         4     ripSilent               
 #           -SendMode:
 #                    0    ripMulticast    (default) sends Version 2 packets via multicast
@@ -6098,7 +6100,7 @@ package provide Ixia 1.0
     if {![info exists $sessno]} {
         ripServer clearAllRouters
         ripServer write
- 
+
         clearProtocolIndex "Rip"  $_chassis $_card $_port
         clearPoolInfo "Rip" $_chassis $_card $_port
         clearService "Rip" $_chassis $_card $_port
@@ -6153,7 +6155,6 @@ package provide Ixia 1.0
     global Ripindex
 
     set retVal $::CIxia::gIxia_OK
-
     get_params $args
     if {![info exists $sessno]} {
         #start RIP server on port
@@ -6243,13 +6244,13 @@ package provide Ixia 1.0
 ######################################################################
 ::itcl::body CIxiaPortETH::AddRipRoutePool { args }  {
     set retVal $::CIxia::gIxia_OK
+
     set args [string tolower $args]
     if {[checkForMissingArgs "-sessno -poolno -ipaddr" $args]== -1} {
         return $::CIxia::gIxia_ERR
     }
   
     Log "***AddRipRoutePool $args"
-
     set prefixlen 24
     set routenum 100
     set metric 2
@@ -6320,7 +6321,6 @@ package provide Ixia 1.0
 ######################################################################
 ::itcl::body CIxiaPortETH::DeleteRipRoutePool { args }  {
     set retVal $::CIxia::gIxia_OK
-
     Log "***DeleteRipRoutePool $args"
     set poolno 0
     set sessno 0
@@ -6338,13 +6338,13 @@ package provide Ixia 1.0
             Log "Rip session $sessno has not been created" warning
             return $::CIxia::gIxia_ERR 
         }
-
        DeleteRipSessionPool $_chassis $_card $_port $sessno
     } elseif {$sessno != 0 && $poolno != 0} {
         if {[checkSessionCreated $_chassis $_card $_port $sessno "Rip"] == 0} {
             Log "Rip session $sessno has not been created" warning
             return $::CIxia::gIxia_ERR 
         }
+
         DeleteRipSpecificPool $_chassis $_card $_port $sessno $poolno
     }
 
@@ -6381,7 +6381,6 @@ package provide Ixia 1.0
         return $::CIxia::gIxia_ERR
     }
     Log "***EditRipSession $args"
-
     set expirationinterval 180000
     set garbageinterval 12000
     set updateinterval  30
@@ -6403,7 +6402,6 @@ package provide Ixia 1.0
     #This command configures the Rip parameters.
     ripServer select $_chassis $_card $_port
     ripServer getRouter $sessno
-
     ripInterfaceRouter config -updateInterval $updateinterval
     ripServer setRouter $sessno
     ripServer write
@@ -6443,7 +6441,6 @@ package provide Ixia 1.0
 ######################################################################
 ::itcl::body CIxiaPortETH::AddRIPngSession { args }  {
     set retVal $::CIxia::gIxia_OK
-
     set args [string tolower $args]
     if {[checkForMissingArgs "-sessno -ipaddr" $args] == -1} {
         return $::CIxia::gIxia_ERR
@@ -6523,7 +6520,6 @@ package provide Ixia 1.0
     ripngServer select $_chassis $_card $_port
 
     if {![info exists sessno]} {
-
         ripngServer  clearAllRouters
         ripngServer set
         ripngServer write
@@ -6620,10 +6616,12 @@ package provide Ixia 1.0
 #     -SessNo,        RIPng Session id; option; default all neighbors on port
 #Usage: port1 CloseRIPngSession -SessNo 1
 ######################################################################
+
+
 ::itcl::body CIxiaPortETH::CloseRIPngSession { args } {    
     global Ripngindex
+    
     Log "***CloseRIPngSession $args"
-
     set retVal $::CIxia::gIxia_OK
 
     get_params $args
@@ -6670,12 +6668,11 @@ package provide Ixia 1.0
 ######################################################################
 ::itcl::body CIxiaPortETH::AddRIPngRoutePool { args }  {
     set retVal $::CIxia::gIxia_OK
-
     set args [string tolower $args]
     if {[checkForMissingArgs "-sessno -poolno -ipaddr" $args] == -1} {
         return $::CIxia::gIxia_ERR   
     }
-    Log "***AddRIPngRoutePool $args"
+    
     set prefixlen 64
     set routenum 100
     set nexthop 0:0:0:0:0:0:0:0
@@ -6743,6 +6740,7 @@ package provide Ixia 1.0
 ######################################################################
 ::itcl::body CIxiaPortETH::DeleteRIPngRoutePool { args }  {
     global PoolRipngindex
+    
     set retVal $::CIxia::gIxia_OK
     set poolno 0
     set sessno 0
@@ -6864,7 +6862,6 @@ package provide Ixia 1.0
         return $::CIxia::gIxia_ERR  
     }    
     
-    
     if { [ StartRoutingEngine $portList "Bgp" ] == -1 } {
         Log "Could not Start BGP4 for $portList at AddBgpSession procedure"     warning
         return $::CIxia::gIxia_ERR
@@ -6947,11 +6944,12 @@ package provide Ixia 1.0
             if { [StopRouteEngine $portList "Bgp" ] == -1 } {
                 Log "Could not Stop BGP4 for $portList at DelBGPSession procedure" warning
                 return $::CIxia::gIxia_ERR 
-                }
+            }
             
             #Set all options about bgp in protocolServer false
             clearService "Bgp" $_chassis $_card $_port    
         }
+
     }    
     
     if { [string match [config_port -ConfigType config] $::CIxia::gIxia_ERR] } {
@@ -6990,7 +6988,7 @@ package provide Ixia 1.0
     if [info exists sessno] {
         set session_flag 1
     }
-    
+
     if { $sess_flag == 0 } {
         #start bgp4 server on port
         if { [enableBgpSession -port $portList ] == -1 } {
@@ -7003,10 +7001,11 @@ package provide Ixia 1.0
             return $::CIxia::gIxia_ERR 
         }
     }
-        
+      
     if { [StartRoutingEngine $portList "Bgp" ]== -1 } {
         Log "Could not Start BGP4 for $portList at OpenBgpSession procedure" warning
         set retCode $::CIxia::gIxia_ERR
+
     }
     
     return $retCode
@@ -7095,7 +7094,7 @@ package provide Ixia 1.0
         Log "Bgp Session $sessno has not been created" warning
         return $::CIxia::gIxia_ERR 
     }
-        
+
     if { [ checkPoolCreated $_chassis $_card $_port $sessno $poolno "Bgp" ] == 1 } {
         Log  " Routes Pool $poolId has been created " warning
         return $::CIxia::gIxia_ERR
@@ -7243,15 +7242,15 @@ package provide Ixia 1.0
         DeleteBgpAllPool $_chassis $_card $_port
     } elseif { $sessno != 0 && $poolno == 0 } {
         if { [checkSessionCreated $_chassis $_card $_port $sessno "Bgp" ] == 0 } {
-        Log "Bgp session $sessno has not been created" warning
-        return $::CIxia::gIxia_ERR 
-    }
+            Log "Bgp session $sessno has not been created" warning
+            return $::CIxia::gIxia_ERR 
+        }
     
         DeleteBgpSessionPool $_chassis $_card $_port $sessno
     } elseif { $sessno != 0 && $poolno != 0 } {
         if { [checkSessionCreated $_chassis $_card $_port $sessno "Bgp" ] == 0 } {
-              Log "Bgp session $sessno has not been created" warning
-              return $::CIxia::gIxia_ERR 
+            Log "Bgp session $sessno has not been created" warning
+            return $::CIxia::gIxia_ERR 
         }
     
         DeleteBgpSpecificPool $_chassis $_card $_port $sessno $poolno
@@ -7320,6 +7319,7 @@ package provide Ixia 1.0
         Log "Bgp Session $sessno has not been created" warning
         return $::CIxia::gIxia_ERR 
     }
+
         
     #check Pool whether has been has been created 
     if { [ checkPoolCreated $_chassis $_card $_port $sessno $poolno "Bgp" ] == 0 } {
@@ -7368,7 +7368,6 @@ package provide Ixia 1.0
     global PoolBgpindex
      
     set tmpList [string tolower [lrange $args 0 end]]
-    
     if { [checkForMissingArgs "-sessno" $tmpList ]== -1 } {
         return $::CIxia::gIxia_ERR
     }
@@ -7417,7 +7416,7 @@ package provide Ixia 1.0
         Log "Bgp Session $sessno has not been created" warning
         return $::CIxia::gIxia_ERR 
     }
-        
+
     if { [array exists PoolBgpindex ] == 0 } {
         Log "Pool has not been create on session $sessno" warning
         return $::CIxia::gIxia_ERR 
@@ -7439,7 +7438,7 @@ package provide Ixia 1.0
     set updated 0
     foreach cursor $PoolBgpindex($_chassis,$_card,$_port) {
         set cur_sess [ lindex $cursor 0 ]
-        
+
         if { $cur_sess == $sessno } {
             set var_pool [ lindex $cursor 1 ]
     
@@ -7485,8 +7484,6 @@ package provide Ixia 1.0
 #            1    sucessful    
 #          0    fail
 ##############################################################################
-
-
 ::itcl::body CIxiaPortETH::StartBgpPoolFlap {args} {
     Log "Start BGP pool flap ..."
     global PoolBgpindex
@@ -7515,20 +7512,21 @@ package provide Ixia 1.0
     }
         
     set updated 0 
-        
     bgp4Server select $_chassis $_card $_port
     
     if { $sess_flag == 0 } {
         foreach cursor $PoolBgpindex($_chassis,$_card,$_port) {
             set cur_sess [ lindex $cursor 0 ]
             set cur_pool [ lindex $cursor 1 ]
-            
+
             if { [llength $cur_pool] == 0 } {
-                continue }
+                continue
+            }
 
             if { $updated == 0 } {
-                set updated 1 }
-                            
+                set updated 1
+            }
+
             bgp4Server getNeighbor $cur_sess
     
             foreach varPool $cur_pool {
@@ -7538,20 +7536,21 @@ package provide Ixia 1.0
             }    
     
             bgp4Server setNeighbor $cur_sess
+
         }
     } elseif { $sess_flag == 1 } {
         set finished 0
         foreach cursor $PoolBgpindex($_chassis,$_card,$_port) {
             set cur_sess [ lindex $cursor 0 ]
             if { $cur_sess == $sessno }  {
-                set finished 1
-                                
+                set finished 1          
                 set cur_pool [ lindex $cursor 1 ]
             
-                    if { [llength $cur_pool] == 0 } {
-                    break }
+                if { [llength $cur_pool] == 0 } {
+                    break
+                }
 
-                 set updated  1
+                set updated  1
                 bgp4Server getNeighbor $cur_sess
     
                 foreach varPool $cur_pool {
@@ -7619,9 +7618,8 @@ package provide Ixia 1.0
         error "Bgp Pool has not been created"
         return $::CIxia::gIxia_ERR
     }
-        
+
     set updated 0 
-        
     bgp4Server select $_chassis $_card $_port
     
     if { $sess_flag == 0 } {
@@ -7630,11 +7628,13 @@ package provide Ixia 1.0
             set cur_pool [ lindex $cursor 1 ]
             
             if { [llength $cur_pool] == 0 } {
-                continue }
+                continue
+            }
 
             if { $updated == 0 } {
-                set updated 1 }
-                            
+                set updated 1
+            }
+        
             bgp4Server getNeighbor $cur_sess
     
             foreach varPool $cur_pool {
@@ -7650,14 +7650,13 @@ package provide Ixia 1.0
         foreach cursor $PoolBgpindex($_chassis,$_card,$_port) {
             set cur_sess [ lindex $cursor 0 ]
             if { $cur_sess == $sessno }  {
-                set finished 1
-                                
+                set finished 1         
                 set cur_pool [ lindex $cursor 1 ]
-            
-                    if { [llength $cur_pool] == 0 } {
-                    break }
+                if { [llength $cur_pool] == 0 } {
+                    break
+                }
 
-                 set updated  1
+                set updated  1
                 bgp4Server getNeighbor $cur_sess
     
                 foreach varPool $cur_pool {
@@ -7733,7 +7732,7 @@ package provide Ixia 1.0
     if [info exists prefixlen] {
         set configPrefixFlag 1
     }
-        
+  
     if [info exists level] {
         if { [ string compare -nocase $level "l1" ] == 0 } {
             set level isisLevel1
@@ -7751,6 +7750,7 @@ package provide Ixia 1.0
             set ipmode "ipv6"
         }
     }
+
     
     if { [checkSessionCreated $_chassis $_card  $_port $neino "Isis" ] } {
         Log "Isis Session $neino has been created" warning
@@ -7849,7 +7849,6 @@ package provide Ixia 1.0
     
     get_params $args
 
-    
     # Select port for Isis commands
     isisServer   select  $_chassis $_card $_port
     
@@ -7863,7 +7862,7 @@ package provide Ixia 1.0
         
         if { [StopRouteEngine $portList "Isis" ] } {
             Log "Could not Stop Isis protocol on port $portList" warning
-        return $::CIxia::gIxia_ERR 
+            return $::CIxia::gIxia_ERR 
         }
         
     } elseif { [ isisServer getRouter $neino ] } {
@@ -7875,11 +7874,12 @@ package provide Ixia 1.0
    
         delIsisIndex $_chassis $_card $_port $neino
         DelIsisPoolInfo $_chassis $_card $_port $neino "all"
-            
+ 
         if { [llength $Isisindex($_chassis,$_card,$_port)] == 0 } {
             if { [StopRouteEngine $portList "Isis" ] == -1 } {
                 Log "Could not Stop Isis for $portList at DeleteIsisNei procedure" warning
                 return $::CIxia::gIxia_ERR    
+
             }
             clearService "Isis" $_chassis $_card $_port
         }    
@@ -7888,7 +7888,7 @@ package provide Ixia 1.0
     if { [string match [config_port -ConfigType config] $::CIxia::gIxia_ERR] } {
         return $::CIxia::gIxia_ERR
     }
-        
+
     if { [llength $Isisindex($_chassis,$_card,$_port)] > 0 } {
         if { [StartRoutingEngine $portList "Isis" ]== -1 } {
             Log "Could not Start Isis for $portList at DeleteIsisNei procedure" warning
@@ -7995,7 +7995,6 @@ package provide Ixia 1.0
 #          1    sucessful
 #          0    fail
 ######################################################################
-
 ::itcl::body CIxiaPortETH::AddIsisNet { args } {
     Log "Add ISIS network ..."
     set tmpList [string tolower [lrange $args 0 end]]
@@ -8028,16 +8027,14 @@ package provide Ixia 1.0
         Log " Isis Routes Pool $netid has been created " warning
         return $::CIxia::gIxia_ERR 
     }
-        
+
     if { $ipmode == "ipv4" } {
         set iptype addressTypeIpV4
     } elseif { $ipmode == "ipv6" } {
         set iptype addressTypeIpV6
-    }
-            
+    }       
     # Select the port and clear all defined routers
-    isisServer select $_chassis $_card $_port
-        
+    isisServer select $_chassis $_card $_port     
     isisRouteRange       setDefault        
     isisRouteRange       config   -enable   true
     isisRouteRange       config   -metric   0
@@ -8084,9 +8081,8 @@ package provide Ixia 1.0
 ::itcl::body CIxiaPortETH::DeleteIsisNet  { args }  {
     Log "Delete Isis network ..."
     global PoolOspfindex
-    
-    set retCode 1
 
+    set retCode 1
     set neino 0
     set netid 0
     

@@ -1163,8 +1163,10 @@ if {[stream set $::chassis $::card $::port $streamId]} {
 }
 
 DeleteAllStream
+SetTxSpeed 88
 SetCustomPkt "01 00 5e 00 00 01 00 00 00 00 00 01 81 00 f0 63 08 00 45 00 00 28 00 00 00 00 01 02 98 37 c4 83 7d 03 e0 00 00 16 22 00 ea 41 00 00 00 01 01 00 00 01 e1 01 01 01 8e b5 82 03 00 00 00 00 00 00"
-
+#SetPortAddress MacAddress IpAddress NetMask GateWay
+SetTxSpeed 88
 incr streamId
 streamRegion generateWarningList $::chassis $::card $::port
 ixWriteConfigToHardware portList -noProtocolServer

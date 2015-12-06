@@ -42,7 +42,7 @@ proc state_check {args} {
                 source [ GetEnvTcl IxOS ]
             }
 		} errMsg ] {
-			puts "加载STC安装路径失败，请确认是否已安装对应版本的STC application."
+			puts "加载Ixia IxOS安装路径失败，请确认是否已安装对应版本的Ixia Application."
 			return 0
 		}
     }
@@ -66,6 +66,7 @@ proc state_check {args} {
     set userName IxiaTclUser-Inventory
     set retCode $::TCL_OK
     
+    set retList [list]
     foreach ip $ip_list {
         if ![CheckIsValidIPv4 $ip] {
             puts "IP地址'$ip'不合法，请输入合法IP地址。" 
@@ -78,7 +79,6 @@ proc state_check {args} {
             return 0
         }
 
-        set retList [list]
         chassis get $ip
         set chassisId	[chassis cget -id]
         set chassisType [chassis cget -typeName]
@@ -99,7 +99,7 @@ proc state_check {args} {
 
             set portStatus ""
             set portUserStatus ""
-            if { $sn != $cardSN } {				
+            if { $sn != $cardSN && $cardSN != "" } {				
                 array unset userStatus
                 for {set portIndex 1} {$portIndex<=$portCount} {incr portIndex} {
                     port get $chassisId $cardIndex $portIndex
@@ -135,4 +135,5 @@ proc state_check {args} {
     return $retList
 }
 
-state_check -ip "10.210.100.12"
+#state_check -ip "10.210.100.12"
+state_check -ip "172.16.174.137"
