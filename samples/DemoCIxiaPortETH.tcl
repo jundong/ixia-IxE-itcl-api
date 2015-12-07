@@ -196,3 +196,97 @@ proc SetTxSpeed {Utilization {Mode "Uti"}} {
 
     return $retVal
 }
+
+proc SetPortAddress { macaddress ipaddress  netmask replyallarp } {
+    set retVal $::TCL_ERROR
+    
+    #set macaddress 00:00:00:00:11:11
+    #set ipaddress 0.0.0.0 
+    #set netmask 255.255.255.0 
+    #set gateway 0.0.0.0 
+    #set replyallarp 0
+    set macaddress $macaddress
+    set ipaddress $ipaddress 
+    set netmask $netmask
+    set gateway 0.0.0.0 
+    set replyallarp $replyallarp
+    set vlan 0
+    set flag 0
+
+    #Start to format the macaddress and IP netmask
+    if {[string length $netmask] > 2} {
+        set netmask [split $netmask \.]
+        for {set j 0 } { $j < [llength $netmask]} {incr j} {
+            set mod [expr [lindex $netmask $j] % 255]
+            if {$mod} {
+                set j [expr $j * 8]
+                set tag 128 
+                while {[expr $mod % $tag]} {
+                    set tag [expr $tag / 2]
+                    set j [expr $j + 1]
+                }
+                set netmask [expr $j + 1]
+                break
+            }        
+        }
+    }
+    #End of formatting macaddress and IP netmask
+    #port setFactoryDefaults $::chassis $::card $::port
+    #protocol setDefault
+    #protocol config -ethernetType ethernetII
+    
+    #Start to configure IP / Mac / gateway / autoArp /arpreply to the target port    
+    interfaceTable select $::chassis $::card $::port
+    interfaceTable clearAllInterfaces
+    interfaceTable config -enableAutoArp true
+    
+    if {[interfaceTable set]} {
+        error "Error calling interfaceTable set"
+        set retVal $::TCL_ERROR
+    }
+    
+    interfaceIpV4 setDefault
+    interfaceIpV4 config -ipAddress $ipaddress
+    interfaceIpV4 config -gatewayIpAddress $gateway
+    interfaceIpV4 config -maskWidth $netmask
+
+    if [interfaceEntry addItem addressTypeIpV4] {
+        error "Error interfaceEntry addItem addressTypeIpV4 on $::chassis $::card $::port"
+        set retVal $::TCL_ERROR
+    }
+    interfaceEntry setDefault
+    interfaceEntry config -enable true
+    interfaceEntry config -description "_port $ipaddress\:01 Interface-1"
+    interfaceEntry config -macAddress $macaddress
+    if {$vlan} { set flag true}
+    interfaceEntry config -enableVlan                         $flag
+    interfaceEntry config -vlanId                             $vlan
+    interfaceEntry config -vlanPriority                       0
+    interfaceEntry config -vlanTPID                           0x8100
+    
+    if [interfaceTable addInterface] {
+        error "Error interfaceTable addInterface on $::chassis $::card $::port"
+        set retVal $::TCL_ERROR
+    }
+    
+    if [interfaceTable write] {
+        error "Error interfaceTable write to $::chassis $::card $::port"
+        set retVal $::TCL_ERROR
+    }
+    
+    protocolServer setDefault
+    protocolServer config -enableArpResponse $replyallarp
+    protocolServer config -enablePingResponse   true
+    if { [protocolServer set $::chassis $::card $::port] } {
+        error "Error setting protocolServer on $::chassis $::card $::port"
+        set retVal $::TCL_ERROR
+    }
+    if { [protocolServer write $::chassis $::card $::port] } {
+        error "Error writting protocolServer on $::chassis $::card $::port"
+        set retVal $::TCL_ERROR
+    }
+
+    #End of configuring  IP / Mac / gateway / autoArp / arpreply
+
+    return $retVal
+}

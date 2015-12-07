@@ -771,6 +771,8 @@ package provide Ixia 1.0
     set retVal $::CIxia::gIxia_OK
     puts "SetCustomPkt: $myValue  $pkt_len"    
     set myvalue $myValue
+    set Srcmac 0000-0000-0000
+    set Srcip 0.0.0.0
     
     protocol setDefault 
     protocol config -name 			mac
@@ -808,6 +810,7 @@ package provide Ixia 1.0
     if { [llength $myvalue] >= 12} {
         stream config -da [lrange $myvalue 0 5]
         stream config -sa [lrange $myvalue 6 11]
+        set Srcmac "[lindex $myvalue 6][lindex $myvalue 7]-[lindex $myvalue 8][lindex $myvalue 9]-[lindex $myvalue 10][lindex $myvalue 11]"
     } elseif { [llength $myvalue] > 6 } {
         stream config -da [lrange $myvalue 0 5]
         for {set i 0} {$i < [llength $myvalue] - 7} {incr i} {
@@ -841,11 +844,22 @@ package provide Ixia 1.0
             
             stream config -frameType "[lindex $myvalue 16] [lindex $myvalue 17]"
             stream config -pattern [lrange $myvalue 18 end]
+            if { [lindex $myvalue 16] == "08" } {
+                set Srcip "[lindex $myvalue 30].[lindex $myvalue 31].[lindex $myvalue 32].[lindex $myvalue 33]"                
+            }
         } else {
             stream config -frameType "[lindex $myvalue 12] [lindex $myvalue 13]"
             stream config -pattern [lrange $myvalue 14 end]
+            if { [lindex $myvalue 16] == "08" } {
+                set Srcip "[lindex $myvalue 26].[lindex $myvalue 27].[lindex $myvalue 28].[lindex $myvalue 29]"                   
+            }
         }
-    }      
+    }
+    
+    # Added table interafce to enable arp response
+    if { $Srcip != "0.0.0.0" } {
+        SetPortAddress -macaddress $Srcmac -ipaddress $Srcip -netmask "255.255.255.0" -replyallarp 1
+    }
     
     if {[string match [config_stream -StreamId 1] $::CIxia::gIxia_ERR]} {
         set retVal $::CIxia::gIxia_ERR
@@ -1302,6 +1316,9 @@ package provide Ixia 1.0
         puts "$opt: $val"
     }
     
+    # Added table interafce to enable arp response
+    SetPortAddress -macaddress $srcmac -ipaddress $srcip -netmask "255.255.255.0" -replyallarp 1
+    
     set srcmac [::ipaddress::format_mac_address $srcmac 6 ":"]
     set desmac [::ipaddress::format_mac_address $desmac 6 ":"]
 
@@ -1707,6 +1724,9 @@ package provide Ixia 1.0
     while {[set result [cmdline::getopt temp $argList opt val]] > 0} {
         set $opt $val    
     }
+    
+    # Added table interafce to enable arp response
+    SetPortAddress -macaddress $srcmac -ipaddress $srcip -netmask "255.255.255.0" -replyallarp 1
     
     set srcmac [::ipaddress::format_mac_address $srcmac 6 ":"]
     set desmac [::ipaddress::format_mac_address $desmac 6 ":"]
@@ -2142,6 +2162,9 @@ package provide Ixia 1.0
         set $opt $val    
     }
     
+    # Added table interafce to enable arp response
+    SetPortAddress -macaddress $srcmac -ipaddress $srcip -netmask "255.255.255.0" -replyallarp 1
+    
     set srcmac [::ipaddress::format_mac_address $srcmac 6 ":"]
     set desmac [::ipaddress::format_mac_address $desmac 6 ":"]
     
@@ -2433,7 +2456,6 @@ package provide Ixia 1.0
 #
 #Usage: _port1 CreateIPv6Stream -SMac 0010-01e9-0011 -DMac ffff-ffff-ffff
 ###########################################################################################
-
 ::itcl::body CIxiaPortETH::CreateIPv6Stream { args } {
     Log  "Create IPv6 stream..."
     set retVal $::CIxia::gIxia_OK
@@ -2531,7 +2553,10 @@ package provide Ixia 1.0
     while {[set result [cmdline::getopt temp $argList opt val]] > 0} {
         set $opt $val        
     }
-           
+
+    # Added table interafce to enable arp response
+    SetPortIPv6Address -macaddress $srcmac -ipaddress $srcip -prefixLen "64" -replyallarp 1
+         
     set srcmac [::ipaddress::format_mac_address $srcmac 6 ":"]
     set desmac [::ipaddress::format_mac_address $desmac 6 ":"]
     
@@ -2819,7 +2844,6 @@ package provide Ixia 1.0
 #
 #Usage: port1 CreateIPv6TCPStream -SMac 0010-01e9-0011 -DMac ffff-ffff-ffff
 ###########################################################################################
-
 ::itcl::body CIxiaPortETH::CreateIPv6TCPStream { args } {
     Log  "Create IPv6 TCP stream..."
     set retVal $::CIxia::gIxia_OK
@@ -2933,7 +2957,9 @@ package provide Ixia 1.0
         set $opt $val        
     }
    
-   
+    # Added table interafce to enable arp response
+    SetPortIPv6Address -macaddress $srcmac -ipaddress $srcip -prefixLen "64" -replyallarp 1
+    
     set srcmac [::ipaddress::format_mac_address $srcmac 6 ":"]
     set desmac [::ipaddress::format_mac_address $desmac 6 ":"]
     set vlan $vlanid
@@ -3273,8 +3299,6 @@ package provide Ixia 1.0
 #
 #Usage: port1 CreateIPv6UDPStream -SMac 0010-01e9-0011 -DMac ffff-ffff-ffff
 ###########################################################################################
-
-
 ::itcl::body CIxiaPortETH::CreateIPv6UDPStream { args } {
     Log  "Create IPv6 udp stream..."
     set retVal $::CIxia::gIxia_OK
@@ -3375,7 +3399,10 @@ package provide Ixia 1.0
     while {[set result [cmdline::getopt temp $argList opt val]] > 0} {
         set $opt $val        
     }
-         
+    
+    # Added table interafce to enable arp response
+    SetPortIPv6Address -macaddress $srcmac -ipaddress $srcip -prefixLen "64" -replyallarp 1
+    
     set srcmac [::ipaddress::format_mac_address $srcmac 6 ":"]
     set desmac [::ipaddress::format_mac_address $desmac 6 ":"]
     set vlan $vlanid
@@ -4294,9 +4321,9 @@ package provide Ixia 1.0
 
 
     #End of formatting macaddress and IP netmask
-    port setFactoryDefaults $_chassis $_card $_port
-    protocol setDefault
-    protocol config -ethernetType ethernetII
+    #port setFactoryDefaults $_chassis $_card $_port
+    #protocol setDefault
+    #protocol config -ethernetType ethernetII
 
     #Start to configure IP / Mac / gateway / autoArp /arpreply to the target port    
     interfaceTable select $_chassis $_card $_port
