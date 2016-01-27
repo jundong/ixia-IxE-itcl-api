@@ -16,37 +16,6 @@ proc state_check {args} {
         set ip_list $ipArr(-ip) 
     }
     
-    if { $::tcl_platform(platform) == "windows" } {
-        package require registry
-        
-        proc GetEnvTcl { product } {       
-            set productKey     "HKEY_LOCAL_MACHINE\\SOFTWARE\\Ixia Communications\\$product"
-            if { [ catch {
-                    set versionKey     [ registry keys $productKey ]
-            } err ] } {
-                    return ""
-            }        
-            
-            set latestKey      [ lindex $versionKey end ]
-            set mutliVKeyIndex [ lsearch $versionKey "Multiversion" ]
-            if { $mutliVKeyIndex > 0 } {
-               set latestKey   [ lindex $versionKey [ expr $mutliVKeyIndex - 2 ] ]
-            }
-            set installInfo    [ append productKey \\ $latestKey \\ InstallInfo ]            
-            return             "[ registry get $installInfo  HOMEDIR ]/TclScripts/bin/ixiawish.tcl"   
-        }
-    
-        if [catch {
-            set ixPath [ GetEnvTcl IxOS ]
-            if { [file exists $ixPath] == 1 } {
-                source [ GetEnvTcl IxOS ]
-            }
-		} errMsg ] {
-			puts "加载Ixia IxOS安装路径失败，请确认是否已安装对应版本的Ixia Application."
-			return 0
-		}
-    }
-    
     proc CheckIsValidIPv4 { ipaddr } {
         set byteList [split $ipaddr .]
         if { [llength $byteList] != 4 } {
@@ -59,8 +28,6 @@ proc state_check {args} {
         }
         return 1
     }
-    
-    package require IxTclHal
     
     set tableHeader "IP地址,机框型号,机框序列号,版本号,槽位号,板卡型号,板卡序列号,端口数量,占用状态,用户占用数量"
     set userName IxiaTclUser-Inventory
@@ -79,9 +46,10 @@ proc state_check {args} {
             return 0
         }
 
+        set chassisId	[ixGetChassisID $ip]
+        
         chassis setDefault
         chassis get $ip
-        set chassisId	[chassis cget -id]
         set chassisType [chassis cget -typeName]
         set chassisSN   [chassis cget -serialNumber]
         set version     [chassis cget -ixServerVersion]
@@ -149,5 +117,39 @@ proc state_check {args} {
     return $retList
 }
 
+proc initIxia {} {
+    package require registry
+    
+    proc GetEnvTcl { product } {       
+        set productKey     "HKEY_LOCAL_MACHINE\\SOFTWARE\\Ixia Communications\\$product"
+        if { [ catch {
+                set versionKey     [ registry keys $productKey ]
+        } err ] } {
+                return ""
+        }        
+        
+        set latestKey      [ lindex $versionKey end ]
+        set mutliVKeyIndex [ lsearch $versionKey "Multiversion" ]
+        if { $mutliVKeyIndex > 0 } {
+           set latestKey   [ lindex $versionKey [ expr $mutliVKeyIndex - 2 ] ]
+        }
+        set installInfo    [ append productKey \\ $latestKey \\ InstallInfo ]            
+        return             "[ registry get $installInfo  HOMEDIR ]/TclScripts/bin/ixiawish.tcl"   
+    }
+
+    if [catch {
+        set ixPath [ GetEnvTcl IxOS ]
+        if { [file exists $ixPath] == 1 } {
+            source [ GetEnvTcl IxOS ]
+            package require IxTclHal
+        }
+    } errMsg ] {
+        puts "加载Ixia IxOS安装路径失败，请确认是否已安装对应版本的Ixia Application."
+        return 0
+    }
+}
+    
+
+initIxia
 #state_check -ip "10.210.100.12"
 state_check -ip "172.16.174.137"

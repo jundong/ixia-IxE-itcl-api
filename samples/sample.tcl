@@ -131,7 +131,6 @@ if {[port set $::chassis $::card $::port]} {
 stat setDefault 
 stat config -mode                               statNormal
 stat config -enableValidStats                   false
-stat config -enableProtocolServerStats          true
 stat config -enableArpStats                     true
 stat config -enablePosExtendedStats             true
 stat config -enableDhcpStats                    false
@@ -381,42 +380,6 @@ if {[interfaceTable write]} {
 	errorMsg "Error calling interfaceTable write"
 	set retCode $::TCL_ERROR
 }
-
-
-protocolServer setDefault 
-protocolServer config -enableArpResponse                  false
-protocolServer config -enablePingResponse                 false
-protocolServer config -enableIgmpQueryResponse            false
-protocolServer config -enableOspfService                  false
-protocolServer config -enableBgp4Service                  false
-protocolServer config -enableIsisService                  false
-protocolServer config -enableRsvpService                  false
-protocolServer config -enableRipService                   false
-protocolServer config -enableLdpService                   false
-protocolServer config -enableRipngService                 false
-protocolServer config -enableMldService                   false
-protocolServer config -enableOspfV3Service                false
-protocolServer config -enablePimsmService                 false
-protocolServer config -enableStpService                   false
-protocolServer config -enableEigrpService                 false
-protocolServer config -enableBfdService                   false
-protocolServer config -enableCfmService                   false
-protocolServer config -enableLacpService                  false
-protocolServer config -enableOamService                   false
-protocolServer config -enableMplsTpService                false
-protocolServer config -enableMplsOamService               false
-protocolServer config -enableElmiService                  false
-protocolServer config -enableBgp4CreateInterface          false
-protocolServer config -enableIsisCreateInterface          false
-protocolServer config -enableOspfCreateInterface          false
-protocolServer config -enableRipCreateInterface           false
-protocolServer config -enableRsvpCreateInterface          false
-protocolServer config -enableIgmpCreateInterface          false
-if {[protocolServer set $::chassis $::card $::port]} {
-	errorMsg "Error calling protocolServer set $::chassis $::card $::port"
-	set retCode $::TCL_ERROR
-}
-
 
 oamPort setDefault 
 oamPort config -enable                             false
@@ -513,7 +476,6 @@ if {[port set $::chassis $::card $::port]} {
 stat setDefault 
 stat config -mode                               statNormal
 stat config -enableValidStats                   false
-stat config -enableProtocolServerStats          true
 stat config -enableArpStats                     true
 stat config -enablePosExtendedStats             true
 stat config -enableDhcpStats                    false
@@ -763,42 +725,6 @@ if {[interfaceTable write]} {
 	errorMsg "Error calling interfaceTable write"
 	set retCode $::TCL_ERROR
 }
-
-
-protocolServer setDefault 
-protocolServer config -enableArpResponse                  false
-protocolServer config -enablePingResponse                 false
-protocolServer config -enableIgmpQueryResponse            false
-protocolServer config -enableOspfService                  false
-protocolServer config -enableBgp4Service                  false
-protocolServer config -enableIsisService                  false
-protocolServer config -enableRsvpService                  false
-protocolServer config -enableRipService                   false
-protocolServer config -enableLdpService                   false
-protocolServer config -enableRipngService                 false
-protocolServer config -enableMldService                   false
-protocolServer config -enableOspfV3Service                false
-protocolServer config -enablePimsmService                 false
-protocolServer config -enableStpService                   false
-protocolServer config -enableEigrpService                 false
-protocolServer config -enableBfdService                   false
-protocolServer config -enableCfmService                   false
-protocolServer config -enableLacpService                  false
-protocolServer config -enableOamService                   false
-protocolServer config -enableMplsTpService                false
-protocolServer config -enableMplsOamService               false
-protocolServer config -enableElmiService                  false
-protocolServer config -enableBgp4CreateInterface          false
-protocolServer config -enableIsisCreateInterface          false
-protocolServer config -enableOspfCreateInterface          false
-protocolServer config -enableRipCreateInterface           false
-protocolServer config -enableRsvpCreateInterface          false
-protocolServer config -enableIgmpCreateInterface          false
-if {[protocolServer set $::chassis $::card $::port]} {
-	errorMsg "Error calling protocolServer set $::chassis $::card $::port"
-	set retCode $::TCL_ERROR
-}
-
 
 oamPort setDefault 
 oamPort config -enable                             false
@@ -938,7 +864,7 @@ ip config -fragment                           may
 ip config -lastFragment                       last
 ip config -fragmentOffset                     0
 ip config -ttl                                64
-ip config -ipProtocol                         ipV4ProtocolReserved255
+ip config -ipProtocol                         ipV4ProtocolOspf
 ip config -useValidChecksum                   ipV4ValidChecksum
 ip config -checksum                           "b6 65"
 ip config -sourceIpAddr                       "6.6.6.6"
@@ -1106,10 +1032,10 @@ ip config -fragment                           may
 ip config -lastFragment                       last
 ip config -fragmentOffset                     0
 ip config -ttl                                64
-ip config -ipProtocol                         ipV4ProtocolReserved255
+ip config -ipProtocol                         ipV4ProtocolOspf
 ip config -useValidChecksum                   ipV4ValidChecksum
 ip config -checksum                           "b6 65"
-ip config -sourceIpAddr                       "8.8.8.8"
+ip config -sourceIpAddr                       "1.1.1.1"
 ip config -sourceIpMask                       "255.0.0.0"
 ip config -sourceIpAddrMode                   ipIdle
 ip config -sourceIpAddrRepeatCount            10
@@ -1165,8 +1091,15 @@ if {[stream set $::chassis $::card $::port $streamId]} {
 #DeleteAllStream
 #SetTxSpeed 88
 #SetCustomPkt "01 00 5e 00 00 01 00 00 00 00 00 01 81 00 f0 63 08 00 45 00 00 28 00 00 00 00 01 02 98 37 c4 83 7d 03 e0 00 00 16 22 00 ea 41 00 00 00 01 01 00 00 01 e1 01 01 01 8e b5 82 03 00 00 00 00 00 00"
-SetPortAddress "00:00:00:00:11:11" "1.1.1.10" "255.255.255.0" 1
+#SetPortAddress "00:00:00:00:11:11" "1.1.1.10" "255.255.255.0" 1
 #SetTxSpeed 88
+
 incr streamId
+streamRegion generateWarningList $::chassis $::card $::port
+ixWriteConfigToHardware portList -noProtocolServer
+
+SetIGMPv1Group 225.0.0.1 100 JOIN 100 2 1.1.1.1 9999-9999-9999
+SetIGMPv2Group 225.0.0.1 100 JOIN 100 2 1.1.1.1 9999-9999-9999
+
 streamRegion generateWarningList $::chassis $::card $::port
 ixWriteConfigToHardware portList -noProtocolServer

@@ -290,3 +290,183 @@ proc SetPortAddress { macaddress ipaddress  netmask replyallarp } {
 
     return $retVal
 }
+
+####################################################################
+# CSMBPortETH::SetIGMPv1Group -Group 225.0.0.1 -VlanID 100 -Mode JOIN -Count 100 -Step 2
+################################################################################################
+proc SetIGMPv1Group { Group  VlanID Mode Count Step SrcIP SrcMac} {
+    set retVal 1
+    set SrcMac 9999-9999-9999
+    set SrcIP 1.1.1.1
+    set Group $Group
+    set VlanID $VlanID
+    set Priority 0
+    set Mode $Mode
+    set Count $Count
+    set Step $Step
+    
+    protocol config -ethernetType ethernetII
+    protocol config -name ipV4
+    #ip setDefault
+    if { [ ip get 1 1 1 ] } {
+        errorMsg "Error calling ip get $::chassis $::card $::port"
+        set retVal $::TCL_ERROR  
+    }
+    ip config -ipProtocol ipV4ProtocolIgmp
+    
+    #stream setDefault
+    if { [ stream get 1 1 1 1 ] } {
+        errorMsg "Error calling stream get $::chassis $::card $::port"
+        set retVal $::TCL_ERROR
+    }
+    
+    #SrcMac,不指定的情况下使用端口MAC地址,不做任何处理
+    #if {$SrcMac != "0000-0000-0001"} {
+    #    set SrcMac [::ipaddress::format_mac_address $SrcMac 6 ":"]
+    #    stream config -sa $SrcMac
+    #    
+    #    if { [ stream set $::chassis $::card $::port 1 ] } {
+    #        errorMsg "Error calling stream set $::chassis $::card $::port"
+    #        set retVal $::TCL_ERROR 
+    #    }
+    #}
+    #
+    #SrcIP,不指定的情况下使用端口IP地址,不做任何处理
+    if {$SrcIP != "0.0.0.0"} {
+        ip config -sourceIpAddr $SrcIP
+    }
+    if {[ip set 1 1 1]} {
+        errorMsg "Error calling ip set $::chassis $::card $::port"
+        set retVal $::TCL_ERROR
+    }
+    
+    if { $VlanID != 0 || $Priority != 0 } {
+        protocol config -enable802dot1qTag vlanSingle
+        vlan setDefault
+        if { [ vlan get $::chassis $::card $::port ] } {
+            errorMsg "Error calling vlan get $::chassis $::card $::port"
+            set retVal $::TCL_ERROR 
+        }
+        
+        vlan config -vlanID $VlanID
+        vlan config -userPriority $Priority
+        
+        if {[vlan set 1 1 1]} {
+            errorMsg "Error calling vlan set $::chassis $::card $::port"
+            set retVal $::TCL_ERROR
+        }
+    }
+    
+    igmp setDefault
+    if { [ igmp get 1 1 1 ] } {
+        errorMsg "Error calling stream get $::chassis $::card $::port"
+        set retVal $::TCL_ERROR  
+    }
+    if { [ string tolower $Mode ] == "join" } {
+        igmp config -type membershipReport1
+    }
+    igmp config -version        igmpVersion1
+    igmp config -groupIpAddress $Group
+    igmp config -mode           igmpIncrement
+    igmp config -repeatCount    $Count 
+    #igmp config -sourceIpAddressList                ""
+    if {[igmp set 1 1 1]} {
+        errorMsg "Error calling igmp set $::chassis $::card $::port"
+        set retVal $::TCL_ERROR
+    }
+    if {[string match [config_port config] $::TCL_ERROR]} {
+        set retVal $::TCL_ERROR
+    }                                        
+    return $retVal
+}
+
+####################################################################
+# CSMBPortETH::SetIGMPv2Group 225.0.0.1 100 JOIN 100 2 1.1.1.1 9999-9999-9999
+################################################################################################
+proc SetIGMPv2Group { Group  VlanID Mode Count Step SrcIP SrcMac} {
+    set retVal 1
+    set SrcMac $SrcMac
+    set SrcIP $SrcIP
+    set Group $Group
+    set VlanID $VlanID
+    set Priority 0
+    set Mode $Mode
+    set Count $Count
+    set Step $Step
+    
+    protocol config -ethernetType ethernetII
+    protocol config -name ipV4
+    #ip setDefault
+    if { [ ip get $::chassis $::card $::port ] } {
+        errorMsg "Error calling ip get $::chassis $::card $::port"
+        set retVal $::CIxia::gIxia_ERR  
+    }
+    ip config -ipProtocol ipV4ProtocolIgmp
+    
+    #stream setDefault
+    if { [ stream get $::chassis $::card $::port 1 ] } {
+        errorMsg "Error calling stream get $::chassis $::card $::port"
+        set retVal $::CIxia::gIxia_ERR  
+    }
+    
+    #SrcMac,不指定的情况下使用端口MAC地址,不做任何处理
+    #if {$SrcMac != "0000-0000-0001"} {
+    #    set SrcMac [::ipaddress::format_mac_address $SrcMac 6 ":"]
+    #    stream config -sa $SrcMac
+    #    
+    #    if { [ stream set $::chassis $::card $::port 1 ] } {
+    #        errorMsg "Error calling stream set $::chassis $::card $::port"
+    #        set retVal $::CIxia::gIxia_ERR  
+    #    }
+    #}
+    
+    #SrcIP,不指定的情况下使用端口IP地址,不做任何处理
+    if {$SrcIP != "0.0.0.0"} {
+        ip config -sourceIpAddr $SrcIP
+    }
+    if {[ip set $::chassis $::card $::port]} {
+        errorMsg "Error calling ip set $::chassis $::card $::port"
+        set retVal $::CIxia::gIxia_ERR 
+    }
+    
+    if { $VlanID != 0 || $Priority != 0 } {
+        protocol config -enable802dot1qTag vlanSingle
+        vlan setDefault
+        if { [ vlan get $::chassis $::card $::port ] } {
+            errorMsg "Error calling vlan get $::chassis $::card $::port"
+            set retVal $::CIxia::gIxia_ERR  
+        }
+        
+        vlan config -vlanID $VlanID
+        vlan config -userPriority $Priority
+        
+        if {[vlan set $::chassis $::card $::port]} {
+            errorMsg "Error calling vlan set $::chassis $::card $::port"
+            set retCode $::CIxia::gIxia_ERR
+        }
+    }
+    
+    igmp setDefault
+    if { [ igmp get $::chassis $::card $::port ] } {
+        errorMsg "Error calling stream get $::chassis $::card $::port"
+        set retVal $::CIxia::gIxia_ERR  
+    }
+    if { [ string tolower $Mode ] == "join" } {
+        igmp config -type membershipReport2
+    } else {
+        igmp config -type leaveGroup
+    }
+    igmp config -version        igmpVersion2
+    igmp config -groupIpAddress $Group
+    igmp config -mode           igmpIncrement
+    igmp config -repeatCount    $Count 
+    #igmp config -sourceIpAddressList                ""
+    if {[igmp set $::chassis $::card $::port]} {
+        errorMsg "Error calling igmp set $::chassis $::card $::port"
+        set retVal $::CIxia::gIxia_ERR  
+    }
+    if {[string match [config_port config] $::TCL_ERROR]} {
+        set retVal $::TCL_ERROR
+    }                                          
+    return $retVal
+}

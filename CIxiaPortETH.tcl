@@ -120,6 +120,10 @@ package provide Ixia 1.0
     public method SetPortIPv6Address { args }
     public method SetTxPacketSize { args }
     
+    #IGMPv1, IGMPv2
+    public method SetIGMPv1Group { args }
+    public method SetIGMPv2Group { args }
+    
     #Protocol Emulation APIs
     public method ProtocolInit { args }
     public method StartRoutingEngine { args }
@@ -1108,6 +1112,244 @@ package provide Ixia 1.0
     Log "Set packet of {$_chassis $_card $_port}:\n\t$arp_pkt"
                                                
     return [$this SetCustomPkt $arp_pkt 60]
+}
+
+####################################################################
+# 方法名称： SetIGMPv1Group
+# 方法功能： 设置端口的IGMPv1组信息
+# 入口参数：
+#           SrcMac 源MAC地址，不指定的情况下使用端口MAC地址
+#           SrcIP  源IP地址，不指定的情况下使用端口IP地址
+#           Group  组地址
+#           VlanID IGMP报文的VLAN Tag头ID，如果不指定默认为不带Tag头
+#           Priority IGMP报文的VLAN Tag头优先级
+#           Mode   组设置模式，可以为JOIN(加入）
+#           Count  组地址数目，用于设置多个组的情况
+#           Step   组地址递增的步长，用于设置多个组的情况
+#
+# 出口参数： 无
+# 例   子:
+#            CIxiaPortETH::SetIGMPv1Group -Group 225.0.0.1 -VlanID 100 -Mode JOIN -Count 100 -Step 2
+################################################################################################
+::itcl::body CIxiaPortETH::SetIGMPv1Group { args } {
+    set retVal $::CIxia::gIxia_OK
+    set SrcMac 0000-0000-0001
+    set SrcIP 0.0.0.0
+    set Group 0.0.0.0
+    set VlanID 0
+    set Priority 0
+    set Mode "JOIN"
+    set Count 1
+    set Step 1
+
+    set argList {SrcMac.arg SrcIP.arg Group.arg VlanID.arg Priority.arg Mode.arg Count.arg Step.arg }
+
+    set result [cmdline::getopt args $argList opt val]
+    while {$result>0} {
+        set $opt $val
+        set result [cmdline::getopt args $argList opt val]        
+    }
+    
+    if {$result<0} {
+        Log "SetIGMPv1Group has illegal parameter! $val"
+        return $::CIxia::gIxia_ERR
+    }
+    
+    protocol config -ethernetType ethernetII
+    protocol config -name ipV4
+    ip setDefault
+    if { [ ip get $_chassis $_card $_port ] } {
+        errorMsg "Error calling ip get $_chassis $_card $_port\n$::ixErrorInfo"
+        set retVal $::CIxia::gIxia_ERR  
+    }
+    ip config -ipProtocol ipV4ProtocolIgmp
+    
+    stream setDefault
+    if { [ stream get $_chassis $_card $_port 1 ] } {
+        errorMsg "Error calling stream get $_chassis $_card $_port\n$::ixErrorInfo"
+        set retVal $::CIxia::gIxia_ERR  
+    }
+    
+    #SrcMac,不指定的情况下使用端口MAC地址,不做任何处理
+    if {$SrcMac != "0000-0000-0001"} {
+        set SrcMac [::ipaddress::format_mac_address $SrcMac 6 ":"]
+        stream config -sa $SrcMac
+        
+        if { [ stream set $_chassis $_card $_port 1 ] } {
+            errorMsg "Error calling stream set $_chassis $_card $_port\n$::ixErrorInfo"
+            set retVal $::CIxia::gIxia_ERR  
+        }
+    }
+    
+    #SrcIP,不指定的情况下使用端口IP地址,不做任何处理
+    if {$SrcIP != "0.0.0.0"} {
+        ip config -sourceIpAddr $SrcIP
+    }
+    if {[ip set $_chassis $_card $_port]} {
+        errorMsg "Error calling ip set $_chassis $_card $_port\n$::ixErrorInfo"
+        set retVal $::CIxia::gIxia_ERR 
+    }
+    
+    if { $VlanID != 0 || $Priority != 0 } {
+        protocol config -enable802dot1qTag vlanSingle
+        vlan setDefault
+        if { [ vlan get $_chassis $_card $_port ] } {
+            errorMsg "Error calling vlan get $_chassis $_card $_port\n$::ixErrorInfo"
+            set retVal $::CIxia::gIxia_ERR  
+        }
+        
+        vlan config -vlanID $VlanID
+        vlan config -userPriority $Priority
+        
+        if {[vlan set $_chassis $_card $_port]} {
+            errorMsg "Error calling vlan set $_chassis $_card $_port\n$::ixErrorInfo"
+            set retCode $::CIxia::gIxia_ERR
+        }
+    }
+    
+    igmp setDefault
+    if { [ igmp get $_chassis $_card $_port ] } {
+        errorMsg "Error calling stream get $_chassis $_card $_port\n$::ixErrorInfo"
+        set retVal $::CIxia::gIxia_ERR  
+    }
+    if { [ string tolower $Mode ] == "join" } {
+        igmp config -type membershipReport1
+    }
+    igmp config -version        igmpVersion1
+    igmp config -groupIpAddress $Group
+    igmp config -mode           igmpIncrement
+    igmp config -repeatCount    $Count 
+    #igmp config -sourceIpAddressList                ""
+    if {[igmp set $_chassis $_card $_port]} {
+        errorMsg "Error calling igmp set $_chassis $_card $_port\n$::ixErrorInfo"
+        set retVal $::CIxia::gIxia_ERR  
+    }
+    
+    if {[string match [config_port -ConfigType config] $::CIxia::gIxia_ERR]} {
+        set retVal $::CIxia::gIxia_ERR
+    }
+    
+    return $retVal
+}
+
+####################################################################
+# 方法名称： SetIGMPv2Group
+# 方法功能： 设置端口的IGMPv2组信息
+# 入口参数：
+#           SrcMac 源MAC地址，不指定的情况下使用端口MAC地址
+#           SrcIP  源IP地址，不指定的情况下使用端口IP地址
+#           Group  组地址
+#           VlanID IGMP报文的VLAN Tag头ID，如果不指定默认为不带Tag头
+#           Priority IGMP报文的VLAN Tag头优先级
+#           Mode   组设置模式，可以为JOIN(加入）和LEAVE(离开）
+#           Count  组地址数目，用于设置多个组的情况
+#           Step   组地址递增的步长，用于设置多个组的情况
+#
+# 出口参数： 无
+# 例   子:
+#            CIxiaPortETH::SetIGMPv2Group -Group 225.0.0.1 -VlanID 100 -Mode JOIN -Count 100 -Step 2
+################################################################################################
+::itcl::body CIxiaPortETH::SetIGMPv2Group { args } {
+    set retVal $::CIxia::gIxia_OK
+    set SrcMac 0000-0000-0001
+    set SrcIP 0.0.0.0
+    set Group 0.0.0.0
+    set VlanID 0
+    set Priority 0
+    set Mode "JOIN"
+    set Count 1
+    set Step 1
+
+    set argList {SrcMac.arg SrcIP.arg Group.arg VlanID.arg Priority.arg Mode.arg Count.arg Step.arg }
+
+    set result [cmdline::getopt args $argList opt val]
+    while {$result>0} {
+        set $opt $val
+        set result [cmdline::getopt args $argList opt val]        
+    }
+    
+    if {$result<0} {
+        Log "SetIGMPv2Group has illegal parameter! $val"
+        return $::CIxia::gIxia_ERR
+    }
+    
+    protocol config -ethernetType ethernetII
+    protocol config -name ipV4
+    ip setDefault
+    if { [ ip get $_chassis $_card $_port ] } {
+        errorMsg "Error calling ip get $_chassis $_card $_port\n$::ixErrorInfo"
+        set retVal $::CIxia::gIxia_ERR  
+    }
+    ip config -ipProtocol ipV4ProtocolIgmp
+    
+    stream setDefault
+    if { [ stream get $_chassis $_card $_port 1 ] } {
+        errorMsg "Error calling stream get $_chassis $_card $_port\n$::ixErrorInfo"
+        set retVal $::CIxia::gIxia_ERR  
+    }
+    
+    #SrcMac,不指定的情况下使用端口MAC地址,不做任何处理
+    if {$SrcMac != "0000-0000-0001"} {
+        set SrcMac [::ipaddress::format_mac_address $SrcMac 6 ":"]
+        stream config -sa $SrcMac
+        
+        if { [ stream set $_chassis $_card $_port 1 ] } {
+            errorMsg "Error calling stream set $_chassis $_card $_port\n$::ixErrorInfo"
+            set retVal $::CIxia::gIxia_ERR  
+        }
+    }
+    
+    #SrcIP,不指定的情况下使用端口IP地址,不做任何处理
+    if {$SrcIP != "0.0.0.0"} {
+        ip config -sourceIpAddr $SrcIP
+    }
+    if {[ip set $_chassis $_card $_port]} {
+        errorMsg "Error calling ip set $_chassis $_card $_port\n$::ixErrorInfo"
+        set retVal $::CIxia::gIxia_ERR 
+    }
+    
+    if { $VlanID != 0 || $Priority != 0 } {
+        protocol config -enable802dot1qTag vlanSingle
+        vlan setDefault
+        if { [ vlan get $_chassis $_card $_port ] } {
+            errorMsg "Error calling vlan get $_chassis $_card $_port\n$::ixErrorInfo"
+            set retVal $::CIxia::gIxia_ERR  
+        }
+        
+        vlan config -vlanID $VlanID
+        vlan config -userPriority $Priority
+        
+        if {[vlan set $_chassis $_card $_port]} {
+            errorMsg "Error calling vlan set $_chassis $_card $_port\n$::ixErrorInfo"
+            set retCode $::CIxia::gIxia_ERR
+        }
+    }
+    
+    igmp setDefault
+    if { [ igmp get $_chassis $_card $_port ] } {
+        errorMsg "Error calling stream get $_chassis $_card $_port\n$::ixErrorInfo"
+        set retVal $::CIxia::gIxia_ERR  
+    }
+    if { [ string tolower $Mode ] == "join" } {
+        igmp config -type membershipReport2
+    } else {
+        igmp config -type leaveGroup
+    }
+    igmp config -version        igmpVersion2
+    igmp config -groupIpAddress $Group
+    igmp config -mode           igmpIncrement
+    igmp config -repeatCount    $Count 
+    #igmp config -sourceIpAddressList                ""
+    if {[igmp set $_chassis $_card $_port]} {
+        errorMsg "Error calling igmp set $_chassis $_card $_port\n$::ixErrorInfo"
+        set retVal $::CIxia::gIxia_ERR  
+    }
+    
+    if {[string match [config_port -ConfigType config] $::CIxia::gIxia_ERR]} {
+        set retVal $::CIxia::gIxia_ERR
+    }
+    
+    return $retVal
 }
 
 ###########################################################################################
@@ -5005,7 +5247,7 @@ package provide Ixia 1.0
        set retVal $::CIxia::gIxia_ERR
        error "get capture from $_chassis,$_card,$_port failed..."
     }
-    set PktCnt [capture cget -nPackets]
+    catch { set PktCnt [capture cget -nPackets] }
     Log "total $PktCnt packets captured"
     lappend retList $retVal
     lappend retList $PktCnt
@@ -5033,7 +5275,8 @@ package provide Ixia 1.0
     set offset     0
     set len        0
     set byteList   ""
-    set PktCnt 0
+    set data       ""
+    set PktCnt     0
   
     #get_params $args    
 	
@@ -5041,7 +5284,7 @@ package provide Ixia 1.0
         set retVal $::CIxia::gIxia_ERR
         error "get capture from $_chassis,$_card,$_port failed..."
     }
-    set PktCnt [capture cget -nPackets]
+    catch { set PktCnt [capture cget -nPackets] }
     Log "total $PktCnt packets captured"
 
     #Get all the packet from Chassis to pc.
@@ -5056,7 +5299,7 @@ package provide Ixia 1.0
         error "read Index = $index packet failed..."
     }
 
-    set data  [captureBuffer cget -frame]
+    catch { set data  [captureBuffer cget -frame] }
     # if {$len == 0} {
         # set len [llength $data]
 
