@@ -28,6 +28,9 @@ proc state_check {args} {
             }        
             
             set latestKey      [ lindex $versionKey end ]
+            if { $latestKey == "InstallInfo" } {
+                set latestKey      [ lindex $versionKey [expr [llength $versionKey] - 2]]
+            }
             set mutliVKeyIndex [ lsearch $versionKey "Multiversion" ]
             if { $mutliVKeyIndex > 0 } {
                set latestKey   [ lindex $versionKey [ expr $mutliVKeyIndex - 2 ] ]
@@ -39,7 +42,7 @@ proc state_check {args} {
         if [catch {
             set ixPath [ GetEnvTcl IxOS ]
             if { [file exists $ixPath] == 1 } {
-                source [ GetEnvTcl IxOS ]
+                source $ixPath
             }
 		} errMsg ] {
 			puts "加载Ixia IxOS安装路径失败，请确认是否已安装对应版本的Ixia Application."
@@ -72,8 +75,11 @@ proc state_check {args} {
             puts "IP地址'$ip'不合法，请输入合法IP地址。" 
             return 0
         }
-        
-        ixLogin $userName      
+        if { [ixConnectToTclServer $ip] != $retCode } {
+            puts "连接Ixia Tcl Server '$ip':4555失败，请检查网络连接。"
+            return 0
+        }
+        ixLogin $userName
         if { [ixConnectToChassis $ip] != $retCode } {
             puts "连接Ixia机框'$ip'失败，请检查网络连接。"
             return 0
@@ -83,7 +89,11 @@ proc state_check {args} {
         chassis get $ip
         set chassisId	[chassis cget -id]
         set chassisType [chassis cget -typeName]
-        set chassisSN   [chassis cget -serialNumber]
+        if { [ catch {
+            set chassisSN   [chassis cget -serialNumber]
+        } err ] } {
+            set chassisSN   "N/A"
+        }   
         set version     [chassis cget -ixServerVersion]
                 
         set maxCards [chassis cget -maxCardCount]
@@ -150,4 +160,6 @@ proc state_check {args} {
 }
 
 #state_check -ip "10.210.100.12"
-state_check -ip "172.16.174.137"
+#state_check -ip "172.16.174.137"
+#state_check -ip "172.18.2.12"
+state_check -ip "172.18.2.8"

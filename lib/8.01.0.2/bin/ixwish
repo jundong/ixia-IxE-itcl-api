@@ -1,0 +1,14 @@
+#!/bin/sh
+#
+
+EXTRACT_PATH=/opt
+IXOS_libs=$EXTRACT_PATH/ixia/ixos-api/8.01.0.2
+
+for FOLDER in `find $IXOS_libs -type f -name pkgIndex.tcl | rev | cut -d/ -f2- | rev`
+    do
+	TCLLIBPATH="$TCLLIBPATH $FOLDER"
+done
+IXIA_VERSION=8.01.0.2
+export IXIA_VERSION
+export TCLLIBPATH
+ixiawish8.5.17  ${@+"$@"}
