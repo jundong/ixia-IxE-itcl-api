@@ -5245,12 +5245,14 @@ IxPuts -red $applyStrResult
         SmbPortReserve $Chas $Card $Port
         #end of added
         
-         set retVal 0
-         lappend portList [list $Chas $Card $Port]
-         if {[ixStartTransmit portList]} {
-             set retVal 1
-         }
-         return $retVal    
+        catch {IxStartPacketGroups $Chas $Card $Port}
+        
+        set retVal 0
+        lappend portList [list $Chas $Card $Port]
+        if {[ixStartTransmit portList]} {
+            set retVal 1
+        }
+        return $retVal    
     }
 
     #!!================================================================
@@ -5271,12 +5273,15 @@ IxPuts -red $applyStrResult
     #修改纪录：     
     #!!================================================================
     proc SmbPortStop {Chas Card Port} {
-         set retVal 0
-         lappend portList [list $Chas $Card $Port]
-         if [ixStopTransmit portList] {
-             set retVal 1
-          }
-         return $retVal    
+        set retVal 0
+        catch {IxStopPacketGroups $Chas $Card $Port}
+        
+        lappend portList [list $Chas $Card $Port]
+        if [ixStopTransmit portList] {
+            set retVal 1
+        }
+          
+        return $retVal    
     }
 
 
@@ -10529,30 +10534,29 @@ puts "port transmit mode: $enumSendMode"
     #修改纪录：     
     #!!================================================================
     proc SmbPortClearStream { Chas Card Port } {
-	
-	port get $Chas $Card $Port
-	
-	set attrList [ list -speed -duplex -flowControl -directedAddress -multicastPauseAddress -loopback -transmitMode -receiveMode -autonegotiate -advertise100FullDuplex -advertise100HalfDuplex -advertise10FullDuplex -advertise10HalfDuplex -advertise1000FullDuplex -usePacketFlowImageFile -packetFlowFileName -portMode -enableDataCenterMode -dataCenterMode -flowControlType -pfcEnableValueListBitMatrix -pfcEnableValueList -pfcResponseDelayEnabled -pfcResponseDelayQuanta -rxTxMode -ignoreLink -advertiseAbilities -timeoutEnable -negotiateMasterSlave -masterSlave -pmaClock -sonetInterface -lineScrambling -dataScrambling -useRecoveredClock -sonetOperation -enableSimulateCableDisconnect -enableAutoDetectInstrumentation -autoDetectInstrumentationMode -enableRepeatableLastRandomPattern -transmitClockDeviation -transmitClockMode -preEmphasis -transmitExtendedTimestamp -operationModeList -owner -typeName -linkState -type -gigVersion -txFpgaVersion -rxFpgaVersion -managerIp -phyMode -lastRandomSeedValue -portState -stateDuration -MacAddress -DestMacAddress -name -numAddresses -rateMode -enableManualAutoNegotiate -enablePhyPolling -enableTxRxSyncStatsMode -txRxSyncInterval -enableTransparentDynamicRateChange -enableDynamicMPLSMode -enablePortCpuFlowControl -portCpuFlowControlDestAddr -portCpuFlowControlSrcAddr -portCpuFlowControlPriority -portCpuFlowControlType -enableWanIFSStretch ]
-	
-	array set attrVal [list]
-	
-	foreach attr $attrList {
-	
-		set tempVal [ port cget $attr ]
-		set attrVal($attr) $tempVal
-puts "$attr:$attrVal($attr)"		
-	}
-	
-	port reset $Chas $Card $Port
-	port set   $Chas $Card $Port
-	
-	#set portList [ list $Chas $Card $Port ]
-	#ixWritePortsToHardware portList
-	
-	port get $Chas $Card $Port
+        port get $Chas $Card $Port
+        
+        set attrList [ list -speed -duplex -flowControl -directedAddress -multicastPauseAddress -loopback -transmitMode -receiveMode -autonegotiate -advertise100FullDuplex -advertise100HalfDuplex -advertise10FullDuplex -advertise10HalfDuplex -advertise1000FullDuplex -usePacketFlowImageFile -packetFlowFileName -portMode -enableDataCenterMode -dataCenterMode -flowControlType -pfcEnableValueListBitMatrix -pfcEnableValueList -pfcResponseDelayEnabled -pfcResponseDelayQuanta -rxTxMode -ignoreLink -advertiseAbilities -timeoutEnable -negotiateMasterSlave -masterSlave -pmaClock -sonetInterface -lineScrambling -dataScrambling -useRecoveredClock -sonetOperation -enableSimulateCableDisconnect -enableAutoDetectInstrumentation -autoDetectInstrumentationMode -enableRepeatableLastRandomPattern -transmitClockDeviation -transmitClockMode -preEmphasis -transmitExtendedTimestamp -operationModeList -owner -typeName -linkState -type -gigVersion -txFpgaVersion -rxFpgaVersion -managerIp -phyMode -lastRandomSeedValue -portState -stateDuration -MacAddress -DestMacAddress -name -numAddresses -rateMode -enableManualAutoNegotiate -enablePhyPolling -enableTxRxSyncStatsMode -txRxSyncInterval -enableTransparentDynamicRateChange -enableDynamicMPLSMode -enablePortCpuFlowControl -portCpuFlowControlDestAddr -portCpuFlowControlSrcAddr -portCpuFlowControlPriority -portCpuFlowControlType -enableWanIFSStretch ]
+        
+        array set attrVal [list]
+        
+        foreach attr $attrList {
+        
+            set tempVal [ port cget $attr ]
+            set attrVal($attr) $tempVal
+            puts "$attr:$attrVal($attr)"		
+        }
+        
+        port reset $Chas $Card $Port
+        port set   $Chas $Card $Port
+        
+        #set portList [ list $Chas $Card $Port ]
+        #ixWritePortsToHardware portList
+        
+        port get $Chas $Card $Port
 	
     	foreach attr $attrList {
-puts "attr:$attr"
+        puts "attr:$attr"
 	    catch {
     		port configure $attr $attrVal($attr)
     	    }
@@ -10560,6 +10564,185 @@ puts "attr:$attr"
     	port set $Chas $Card $Port
     }
 
+    proc IxStartPacketGroups {Chas Card Port} {
+        configPacketGroup $Chas $Card $Port
+        
+        lappend portList [list $Chas $Card $Port]
+        #--before we start packetgroups we should stop it first
+        ixStopPacketGroups portList
+        #--start packetgroups-based stats
+        ixStartPacketGroups portList
+    }
+    
+    proc IxStopPacketGroups {Chas Card Port} {
+        lappend portList [list $Chas $Card $Port]
+        
+        #--stop packetgroups-based stats
+        ixStopPacketGroups portList
+    }
+    
+    proc configPacketGroup {Chas Card Port} {
+        lappend portList [list $Chas $Card $Port]
+        
+        port get $Chas $Card $Port
+        #port config -transmitMode portTxPacketStreams
+        port config -receiveMode [expr $::portCapture|$::portRxSequenceChecking|$::portRxModeWidePacketGroup|$::portRxModePerFlowErrorStats]
+        if [ixWritePortsToHardware portList -noProtocolServer] {
+            IxPuts -red "Can't write config to $Chas $Card $Port"
+            set retVal 1   
+        } 
+        #-- configure stream as well as tx/rx mode
+        set streamid   1
+        set retVal     0
+        set groupId    $streamid
+    
+        while {[stream get $Chas $Card $Port $streamid] != 1} {
+            stream config -enableTimestamp  true
+            stream config -name  _${Card}_${Port}_${streamid}
+            if [stream set $Chas $Card $Port $streamid] {
+                IxPuts -red "Unable to set streams to IxHal!"
+                set retVal 1
+            }
+            
+            set groupId [expr $Card * 100 + $Port * 10 + $streamid]
+            udf setDefault
+            packetGroup setDefault
+            packetGroup config -groupId $groupId
+            packetGroup config -enableGroupIdMask true
+            packetGroup config -enableInsertPgid true
+            packetGroup config -groupIdMask 61440
+            packetGroup config -insertSignature true
+            #packetGroup config -latencyControl cutThrough
+            #packetGroup config -measurementMode packetGroupModeLatency
+            #packetGroup config -latencyControl interArrivalJitter
+            #packetGroup config -measurementMode packetGroupModeInterArrivalTime
+            
+            if {[packetGroup setTx $Chas $Card $Port $streamid ]} {
+                IxLog "Error calling packetGroup setTx $Chas $Card $Port $streamid"
+                set retVal 1
+            } 
+            if {[packetGroup setRx $Chas $Card $Port ]} {
+                IxLog "Error calling packetGroup setRx $Chas $Card $Port"
+                set retVal 1
+            } 
+            #autoDetectInstrumentation setDefault 
+            #autoDetectInstrumentation config -enableTxAutomaticInstrumentation   true
+            #if {[ eval autoDetectInstrumentation setTx $Chas $Card $Port $streamid ]} {
+            #    IxLog "Error calling autoDetectInstrumentation on $Chas $Card $Port"
+            #}
+            
+            incr streamid
+        }
+        
+        #ixSetAutoDetectInstrumentationMode portList
+        if [ixWriteConfigToHardware portList -noProtocolServer] {
+            IxPuts -red "Can't write config to $Chas $Card $Port"
+            set retVal 1  
+        }
+           
+        #if { [ ixCheckLinkState portList ] } {
+        #    IxLog "Link on one or more ports is down"
+        #    set retVal 1                            
+        #}
+        return $retVal
+    }
+    
+    #!!================================================================
+    #过 程 名：     SmbStreamStats 
+    #程 序 包：     IXIA
+    #功能类别：     
+    #过程描述：     clear port streams
+    #用法：         
+    #示例：         
+    #               
+    #参数说明：     
+    #               Chas:     Ixia的hub号
+    #               Card:     Ixia接口卡所在的槽号
+    #               Port:     Ixia接口卡的端口号
+    #返 回 值：     成功返回0,失败返回1
+    #作    者：     Judo Xu
+    #生成日期：     2016-4-17
+    #修改纪录：     
+    #!!================================================================
+    proc SmbStreamStats  { Chas Card Port } {
+        set retVal true
+        set retList [list ]
+        lappend retList $retVal,
+        set txport $Card/$Port
+        set streamid   1
+        while {[stream get $Chas $Card $Port $streamid] != 1} {
+            set name [stream cget -name]
+            set groupId [expr $Card * 100 + $Port * 10 + $streamid]
+            set rxChas ""
+            set rxCard ""
+            set rxPort ""
+            set found false
+            set streamStats ""
+            foreach portList $m_portList {
+                set rxChas [lindex $portList 0]
+                set rxCard [lindex $portList 1]
+                set rxPort [lindex $portList 2]
+                #Don't use port itself as the receive side
+                if {$rxChas == $Chas && $rxCard == $Card && $rxPort == $Port} {
+                    continue
+                }
+                set rxport $rxCard/$rxPort
+                if {[packetGroupStats get $rxChas $rxCard $rxPort $groupId $groupId] != 1} {
+                    set totalFrames [ packetGroupStats cget -totalFrames ]
+                    if { $totalFrames == 0 } {
+                        continue
+                    }
+                    set found true
+                    set minLatency [ packetGroupStats cget -minLatency ]
+                    set maxLatency [ packetGroupStats cget -maxLatency ]
+                    set maxminInterval [ packetGroupStats cget -maxminInterval ]
+                    set averageLatency [ packetGroupStats cget -averageLatency ]
+                    set totalByteCount [ packetGroupStats cget -totalByteCount ]
+                    set bitRate [ packetGroupStats cget -bitRate ]
+                    set byteRate [ packetGroupStats cget -byteRate ]
+                    set frameRate [ packetGroupStats cget -frameRate ]
+                    set readTimeStamp [ packetGroupStats cget -readTimeStamp ]
+                    set firstTimeStamp [ packetGroupStats cget -firstTimeStamp ]
+                    set lastTimeStamp [ packetGroupStats cget -lastTimeStamp ]
+                    
+                    set streamStats "$name,rxFrames $totalFrames"
+                    set streamStats "$streamStats $name,minLatency $minLatency"
+                    set streamStats "$streamStats $name,maxLatency $maxLatency"
+                    set streamStats "$streamStats $name,avgLatency $averageLatency"
+                    set streamStats "$streamStats $name,txport $txport"
+                    set streamStats "$streamStats $name,rxport $rxport"
+                    set streamStats "$streamStats $name,rxBitsRate $bitRate"
+                    set streamStats "$streamStats $name,rxFramesRate $frameRate"
+                    
+                    if {[streamTransmitStats get $Chas $Card $Port $streamid $streamid] != 1} {
+                        set framesSent [streamTransmitStats cget -framesSent]
+                        set txFramesRate [streamTransmitStats cget -frameRate]
+                        set theoreticalAverageFrameRate [streamTransmitStats cget -theoreticalAverageFrameRate]
+                        
+                        set streamStats "$streamStats $name,txFrames $framesSent"
+                        set streamStats "$streamStats $name,txFramesRate $txFramesRate"
+                    }
+                } else {
+                    continue
+                }
+            }
+            
+            if { !$found } {
+                set streamStats "$name,rxFrames 0"
+                set streamStats "$streamStats $name,minLatency 0"
+                set streamStats "$streamStats $name,maxLatency 0"
+                set streamStats "$streamStats $name,avgLatency 0"
+                set streamStats "$streamStats $name,txport $txport"
+                set streamStats "$streamStats $name,rxBitsRate 0"
+                set streamStats "$streamStats $name,rxFramesRate 0"
+                set streamStats "$streamStats $name,txFrames 0"
+                set streamStats "$streamStats $name,txFramesRate 0"
+            }
+            lappend retList $streamStats
+            incr streamid
+        }
+        return $retList
+    }
 }
 
 

@@ -1,3 +1,134 @@
+proc IxStartPacketGroups {Chas Card Port} {
+    configPacketGroup $Chas $Card $Port
+    
+    lappend portList [list $Chas $Card $Port]
+    #--before we start packetgroups we should stop it first
+    ixStopPacketGroups portList
+    #--start packetgroups-based stats
+    ixStartPacketGroups portList
+}
+
+proc IxStopPacketGroups {Chas Card Port} {
+    lappend portList [list $Chas $Card $Port]
+    
+    #--stop packetgroups-based stats
+    ixStopPacketGroups portList
+}
+
+proc configPacketGroup {Chas Card Port} {
+    lappend portList [list $Chas $Card $Port]
+    
+    port get $Chas $Card $Port
+    port config -receiveMode  [expr $::portCapture|$::portRxSequenceChecking|$::portRxModeWidePacketGroup|$::portRxModePerFlowErrorStats]
+    
+    #-- configure stream as well as tx/rx mode
+    set streamid   1
+    set groupId    $streamid
+
+    while {[stream get $Chas $Card $Port $streamid] != 1} {
+        stream config -enableTimestamp  true
+        stream config -name  _${Card}_${Port}_${streamid}
+        if [stream set $Chas $Card $Port $streamid] {
+            puts "Unable to set streams to IxHal!"
+            set retVal 1
+        }
+        
+        set groupId [expr $Card * 100 + $Port * 10 + $streamid]
+        udf setDefault
+        packetGroup setDefault
+        packetGroup config -groupId $groupId
+        packetGroup config -enableGroupIdMask true
+        packetGroup config -enableInsertPgid true
+        packetGroup config -groupIdMask 61440
+        packetGroup config -insertSignature true
+        
+        if {[packetGroup setTx $Chas $Card $Port $streamid ]} {
+            puts "Error calling packetGroup setTx $Chas $Card $Port $streamid"
+        } 
+        
+        #autoDetectInstrumentation setDefault 
+        #autoDetectInstrumentation config -enableTxAutomaticInstrumentation   true
+        #if {[ eval autoDetectInstrumentation setTx $Chas $Card $Port $streamid ]} {
+        #    puts "Error calling autoDetectInstrumentation on $Chas $Card $Port"
+        #}
+        #
+        incr streamid
+    }
+    
+    #ixSetAutoDetectInstrumentationMode portList
+    if [ixWritePortsToHardware portList -noProtocolServer] {
+        IxPuts -red "Can't write config to $Chas $Card $Port"
+        set retVal 1   
+    } 
+    if [ixWriteConfigToHardware portList -noProtocolServer] {
+        IxPuts -red "Can't write config to $Chas $Card $Port"
+        set retVal 1  
+    }
+       
+    if { [ ixCheckLinkState portList ] } {
+        puts "Link on one or more ports is down"
+        return 1                            
+    }       
+}
+
+#!!================================================================
+#过 程 名：     SmbStreamStats 
+#程 序 包：     IXIA
+#功能类别：     
+#过程描述：     clear port streams
+#用法：         
+#示例：         
+#               
+#参数说明：     
+#               Chas:     Ixia的hub号
+#               Card:     Ixia接口卡所在的槽号
+#               Port:     Ixia接口卡的端口号
+#返 回 值：     成功返回0,失败返回1
+#作    者：     Judo Xu
+#生成日期：     2016-4-17
+#修改纪录：     
+#!!================================================================
+proc SmbStreamStats  { Chas Card Port } {
+    set streamid   1
+    while {[stream get $Chas $Card $Port $streamid] != 1} {
+        set groupId [expr $Card * 100 + $Port * 10 + $streamid]
+        set rxChas ""
+        set rxCard ""
+        set rxPort ""
+        foreach portList $m_portList {
+            set rxChas [lindex $portList 0]
+            set rxCard [lindex $portList 1]
+            set rxPort [lindex $portList 2]
+            #Don't use port itself as the receive side
+            if {$rxChas == $Chas && $rxCard == $Card && $rxPort == Port} {
+                continue
+            }
+            if {[packetGroupStats get $rxChas $rxCard $rxPort $groupId $groupId] != 1} {
+                set rx [ packetGroupStats cget -totalFrames ]
+                Deputs "stream $i rx: $rx"
+                if {[streamTransmitStats get $Chas $Card $Port $streamid $streamid] != 1} {
+                    set tx [streamTransmitStats cget -framesSent]
+                    Deputs "stream $i tx: $tx"
+                }
+                set streamBasedFramesLoss [ expr $tx - $rx ]
+               
+                set result($i,txFrame)   $tx
+                set result($i,rxFrame)   $rx
+                set result($i,loss)      $streamBasedFramesLoss
+                incr totalLoss           $streamBasedFramesLoss
+                if { $streamBasedFramesLoss } {
+                    set pass 0 
+                }
+                
+                break
+            } else {
+                continue
+            }
+        }
+    }
+    return 0
+}
+
 proc SetCustomPkt {{myValue 0} {pkt_len -1}} {
     puts "SetCustomPkt: $myValue  $pkt_len"    
     set myvalue $myValue

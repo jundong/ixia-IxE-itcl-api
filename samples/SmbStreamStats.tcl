@@ -495,9 +495,9 @@ packetGroup config -insertSignature                    false
 packetGroup config -ignoreSignature                    false
 packetGroup config -groupId                            0
 packetGroup config -groupIdOffset                      52
-packetGroup config -enableGroupIdMask                  true
+packetGroup config -enableGroupIdMask                  false
 packetGroup config -enableInsertPgid                   true
-packetGroup config -groupIdMask                        61440
+packetGroup config -groupIdMask                        0
 packetGroup config -latencyControl                     cutThrough
 packetGroup config -measurementMode                    packetGroupModeLatency
 packetGroup config -preambleSize                       8
@@ -510,7 +510,7 @@ packetGroup config -signatureMask                      "00 00 00 00"
 packetGroup config -enableRxFilter                     false
 packetGroup config -headerFilter                       "00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00"
 packetGroup config -headerFilterMask                   "00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00"
-packetGroup config -enable128kBinMode                  false
+packetGroup config -enable128kBinMode                  true
 packetGroup config -enableTimeBins                     false
 packetGroup config -numPgidPerTimeBin                  32
 packetGroup config -numTimeBins                        1
@@ -535,56 +535,56 @@ filter config -captureTriggerDA                   anyAddr
 filter config -captureTriggerSA                   anyAddr
 filter config -captureTriggerPattern              anyPattern
 filter config -captureTriggerError                errAnyFrame
-filter config -captureTriggerFrameSizeEnable      true
-filter config -captureTriggerFrameSizeFrom        256
-filter config -captureTriggerFrameSizeTo          512
+filter config -captureTriggerFrameSizeEnable      false
+filter config -captureTriggerFrameSizeFrom        0
+filter config -captureTriggerFrameSizeTo          0
 filter config -captureTriggerCircuit              filterAnyCircuit
 filter config -captureFilterDA                    anyAddr
 filter config -captureFilterSA                    anyAddr
 filter config -captureFilterPattern               anyPattern
 filter config -captureFilterError                 errAnyFrame
-filter config -captureFilterFrameSizeEnable       true
-filter config -captureFilterFrameSizeFrom         512
-filter config -captureFilterFrameSizeTo           1024
+filter config -captureFilterFrameSizeEnable       false
+filter config -captureFilterFrameSizeFrom         0
+filter config -captureFilterFrameSizeTo           0
 filter config -captureFilterCircuit               filterAnyCircuit
 filter config -userDefinedStat1DA                 anyAddr
 filter config -userDefinedStat1SA                 anyAddr
 filter config -userDefinedStat1Pattern            anyPattern
 filter config -userDefinedStat1Error              errAnyFrame
-filter config -userDefinedStat1FrameSizeEnable    true
-filter config -userDefinedStat1FrameSizeFrom      64
-filter config -userDefinedStat1FrameSizeTo        128
+filter config -userDefinedStat1FrameSizeEnable    false
+filter config -userDefinedStat1FrameSizeFrom      0
+filter config -userDefinedStat1FrameSizeTo        0
 filter config -userDefinedStat1Circuit            filterAnyCircuit
 filter config -userDefinedStat2DA                 anyAddr
 filter config -userDefinedStat2SA                 anyAddr
 filter config -userDefinedStat2Pattern            anyPattern
 filter config -userDefinedStat2Error              errAnyFrame
-filter config -userDefinedStat2FrameSizeEnable    1
-filter config -userDefinedStat2FrameSizeFrom      128
-filter config -userDefinedStat2FrameSizeTo        256
+filter config -userDefinedStat2FrameSizeEnable    0
+filter config -userDefinedStat2FrameSizeFrom      0
+filter config -userDefinedStat2FrameSizeTo        0
 filter config -userDefinedStat2Circuit            filterAnyCircuit
 filter config -asyncTrigger1DA                    anyAddr
 filter config -asyncTrigger1SA                    anyAddr
 filter config -asyncTrigger1Pattern               anyPattern
 filter config -asyncTrigger1Error                 errAnyFrame
-filter config -asyncTrigger1FrameSizeEnable       true
-filter config -asyncTrigger1FrameSizeFrom         1024
-filter config -asyncTrigger1FrameSizeTo           1086
+filter config -asyncTrigger1FrameSizeEnable       false
+filter config -asyncTrigger1FrameSizeFrom         0
+filter config -asyncTrigger1FrameSizeTo           0
 filter config -asyncTrigger1Circuit               filterAnyCircuit
 filter config -asyncTrigger2DA                    anyAddr
 filter config -asyncTrigger2SA                    anyAddr
 filter config -asyncTrigger2Pattern               anyPattern
 filter config -asyncTrigger2Error                 errAnyFrame
-filter config -asyncTrigger2FrameSizeEnable       true
-filter config -asyncTrigger2FrameSizeFrom         1086
-filter config -asyncTrigger2FrameSizeTo           1516
+filter config -asyncTrigger2FrameSizeEnable       false
+filter config -asyncTrigger2FrameSizeFrom         0
+filter config -asyncTrigger2FrameSizeTo           0
 filter config -asyncTrigger2Circuit               filterAnyCircuit
 filter config -captureTriggerEnable               true
 filter config -captureFilterEnable                true
-filter config -userDefinedStat1Enable             true
-filter config -userDefinedStat2Enable             true
-filter config -asyncTrigger1Enable                true
-filter config -asyncTrigger2Enable                true
+filter config -userDefinedStat1Enable             false
+filter config -userDefinedStat2Enable             false
+filter config -asyncTrigger1Enable                false
+filter config -asyncTrigger2Enable                false
 filter config -userDefinedStat1PatternExpressionEnable false
 filter config -userDefinedStat2PatternExpressionEnable false
 filter config -captureTriggerPatternExpressionEnable false
@@ -638,14 +638,14 @@ filterPallette config -enableGfpeHecError                 true
 filterPallette config -enableGfpPayloadCrcError           true
 filterPallette config -enableGfpBadFcsError               true
 filterPallette config -circuitList                        ""
-filterPallette config -range1Min                          64
-filterPallette config -range1Max                          128
-filterPallette config -range2Min                          128
-filterPallette config -range2Max                          256
-filterPallette config -range3Min                          1024
-filterPallette config -range3Max                          1086
-filterPallette config -range4Min                          1086
-filterPallette config -range4Max                          1516
+filterPallette config -range1Min                          0
+filterPallette config -range1Max                          0
+filterPallette config -range2Min                          0
+filterPallette config -range2Max                          0
+filterPallette config -range3Min                          0
+filterPallette config -range3Max                          0
+filterPallette config -range4Min                          0
+filterPallette config -range4Max                          0
 filterPallette config -range1MatchMinMaxOnly              0
 filterPallette config -range2MatchMinMaxOnly              0
 filterPallette config -range3MatchMinMaxOnly              0
@@ -761,18 +761,18 @@ stream config -enableSuspend                      false
 stream config -region                             0
 stream config -numBursts                          1
 stream config -numFrames                          100
-stream config -ifg                                96.00000000000091
+stream config -ifg                                96.0
 stream config -ifgType                            gapFixed
-stream config -ifgMIN                             96.00000000000091
-stream config -ifgMAX                             96.00000000000091
-stream config -ibg                                96.00000000000091
+stream config -ifgMIN                             96.0
+stream config -ifgMAX                             96.0
+stream config -ibg                                96.0
 stream config -enableIbg                          false
-stream config -isg                                96.00000000000091
+stream config -isg                                96.0
 stream config -enableIsg                          false
 stream config -gapUnit                            gapNanoSeconds
-stream config -percentPacketRate                  100.0
-stream config -fpsRate                            154130.70283600493
-stream config -bpsRate                            975339087.5462391
+stream config -percentPacketRate                  99.99999999999999
+stream config -fpsRate                            81274.38231469439
+stream config -bpsRate                            986996098.8296487
 stream config -rateMode                           streamRateModePercentRate
 stream config -preambleSize                       8
 stream config -preambleData                       "55 55 55 55 55 55 D5"
@@ -782,18 +782,18 @@ stream config -saStep                             1
 stream config -saMaskValue                        "00 00 00 00 00 00"
 stream config -saMaskSelect                       "00 00 00 00 00 00"
 stream config -enableSaContinueFromLastValue      false
-stream config -da                                 "00 00 00 00 00 00"
+stream config -da                                 "00 00 00 00 00 01"
 stream config -daRepeatCounter                    idle
 stream config -daStep                             1
 stream config -daMaskValue                        "00 00 00 00 00 00"
 stream config -daMaskSelect                       "00 00 00 00 00 00"
 stream config -enableDaContinueFromLastValue      false
-stream config -framesize                          901
-stream config -frameSizeType                      sizeRandom
-stream config -frameSizeMIN                       64
+stream config -framesize                          1518
+stream config -frameSizeType                      sizeFixed
+stream config -frameSizeMIN                       1518
 stream config -frameSizeMAX                       1518
 stream config -frameSizeStep                      1
-stream config -enableTimestamp                    true
+stream config -enableTimestamp                    false
 stream config -fcs                                good
 stream config -patternType                        incrByte
 stream config -dataPattern                        x00010203
@@ -801,7 +801,7 @@ stream config -pattern                            "00 01 02 03"
 stream config -frameType                          "FF FF"
 stream config -numDA                              16
 stream config -numSA                              16
-stream config -dma                                advance
+stream config -dma                                contPacket
 stream config -rxTriggerEnable                    false
 stream config -asyncIntEnable                     true
 stream config -loopCount                          1
@@ -853,211 +853,6 @@ if {[port isValidFeature $chassis $card $port $::portFeatureRandomFrameSizeWeigh
 
 if {[stream set $chassis $card $port $streamId]} {
 	errorMsg "Error calling stream set $chassis $card $port $streamId"
-	set retCode $::TCL_ERROR
-}
-
-udf setDefault 
-udf config -repeat                             1
-udf config -continuousCount                    true
-udf config -initval                            {00 00 00 00 }
-udf config -updown                             uuuu
-udf config -cascadeType                        udfCascadeNone
-udf config -step                               1
-packetGroup setDefault 
-packetGroup config -signatureOffset                    48
-packetGroup config -signature                          "08 71 18 05"
-packetGroup config -insertSignature                    true
-packetGroup config -ignoreSignature                    false
-packetGroup config -groupId                            1999
-packetGroup config -groupIdOffset                      52
-packetGroup config -enableGroupIdMask                  false
-packetGroup config -enableInsertPgid                   true
-packetGroup config -groupIdMask                        0
-packetGroup config -latencyControl                     cutThrough
-packetGroup config -measurementMode                    packetGroupModeLatency
-packetGroup config -preambleSize                       8
-packetGroup config -sequenceNumberOffset               44
-packetGroup config -sequenceErrorThreshold             2
-packetGroup config -insertSequenceSignature            false
-packetGroup config -allocateUdf                        true
-packetGroup config -enableSignatureMask                false
-packetGroup config -signatureMask                      "00 00 00 00"
-packetGroup config -enableRxFilter                     false
-packetGroup config -headerFilter                       "00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00"
-packetGroup config -headerFilterMask                   "00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00"
-packetGroup config -enable128kBinMode                  false
-packetGroup config -enableTimeBins                     false
-packetGroup config -numPgidPerTimeBin                  32
-packetGroup config -numTimeBins                        10
-packetGroup config -timeBinDuration                    1000000
-packetGroup config -enableLatencyBins                  false
-packetGroup config -latencyBinList                     ""
-packetGroup config -groupIdMode                        packetGroupCustom
-packetGroup config -sequenceCheckingMode               seqThreshold
-packetGroup config -multiSwitchedPathMode              seqSwitchedPathPGID
-packetGroup config -pgidStatMode                       0
-packetGroup config -enableLastBitTimeStamp             false
-packetGroup config -seqAdvTrackingLateThreshold        1000
-packetGroup config -enableReArmFirstTimeStamp          false
-if {[packetGroup setTx $chassis $card $port $streamId]} {
-	errorMsg "Error calling packetGroup setTx $chassis $card $port $streamId"
-	set retCode $::TCL_ERROR
-}
-
-incr streamId
-if {[port resetStreamProtocolStack $chassis $card $port]} {
-	errorMsg "Error calling port resetStreamProtocolStack $chassis $card $port"
-	set retCode $::TCL_ERROR
-}
-
-#  Stream 2
-stream setDefault 
-stream config -name                               ""
-stream config -enable                             true
-stream config -enableSuspend                      false
-stream config -region                             0
-stream config -numBursts                          1
-stream config -numFrames                          100
-stream config -ifg                                96.00000000000091
-stream config -ifgType                            gapFixed
-stream config -ifgMIN                             96.00000000000091
-stream config -ifgMAX                             96.00000000000091
-stream config -ibg                                96.00000000000091
-stream config -enableIbg                          false
-stream config -isg                                96.00000000000091
-stream config -enableIsg                          false
-stream config -gapUnit                            gapNanoSeconds
-stream config -percentPacketRate                  100.0
-stream config -fpsRate                            154130.70283600493
-stream config -bpsRate                            975339087.5462391
-stream config -rateMode                           streamRateModePercentRate
-stream config -preambleSize                       8
-stream config -preambleData                       "55 55 55 55 55 55 D5"
-stream config -sa                                 "00 0C 29 AF 95 8B"
-stream config -saRepeatCounter                    idle
-stream config -saStep                             1
-stream config -saMaskValue                        "00 00 00 00 00 00"
-stream config -saMaskSelect                       "00 00 00 00 00 00"
-stream config -enableSaContinueFromLastValue      false
-stream config -da                                 "00 00 00 00 00 00"
-stream config -daRepeatCounter                    idle
-stream config -daStep                             1
-stream config -daMaskValue                        "00 00 00 00 00 00"
-stream config -daMaskSelect                       "00 00 00 00 00 00"
-stream config -enableDaContinueFromLastValue      false
-stream config -framesize                          1415
-stream config -frameSizeType                      sizeRandom
-stream config -frameSizeMIN                       64
-stream config -frameSizeMAX                       1518
-stream config -frameSizeStep                      1
-stream config -enableTimestamp                    true
-stream config -fcs                                good
-stream config -patternType                        incrByte
-stream config -dataPattern                        x00010203
-stream config -pattern                            "00 01 02 03"
-stream config -frameType                          "FF FF"
-stream config -numDA                              16
-stream config -numSA                              16
-stream config -dma                                gotoFirst
-stream config -rxTriggerEnable                    false
-stream config -asyncIntEnable                     true
-stream config -loopCount                          1
-stream config -returnToId                         1
-stream config -enforceMinGap                      12
-stream config -enableStatistic                    true
-stream config -enableIncrFrameBurstOverride       false
-stream config -enableDisparityError               false
-stream config -forceDisableDataMangling           0
-stream config -enableSourceInterface              false
-stream config -sourceInterfaceDescription         ""
-stream config -startTxDelayUnit                   4
-stream config -startTxDelay                       0.0
-stream config -priorityGroup                      priorityGroup0
-
-protocol setDefault 
-protocol config -name                               mac
-protocol config -appName                            noType
-protocol config -ethernetType                       noType
-protocol config -enable802dot1qTag                  vlanNone
-protocol config -enableISLtag                       false
-protocol config -enableMPLS                         false
-protocol config -enableMacSec                       false
-protocol config -enableOAM                          false
-protocol config -enableProtocolPad                  false
-
-
-
-
-if {[port isValidFeature $chassis $card $port $::portFeatureTableUdf]} { 
-	tableUdf setDefault
-	tableUdf clearColumns
-	if {[tableUdf set $chassis $card $port]} {
-		errorMsg "Error calling tableUdf set $chassis $card $port"
-		set retCode $::TCL_ERROR
-	}
-
-}
-
-
-if {[port isValidFeature $chassis $card $port $::portFeatureRandomFrameSizeWeightedPair]} { 
-	weightedRandomFramesize setDefault
-	if {[weightedRandomFramesize set $chassis $card $port]} {
-		errorMsg "Error calling weightedRandomFramesize set $chassis $card $port"
-		set retCode $::TCL_ERROR
-	}
-
-}
-
-if {[stream set $chassis $card $port $streamId]} {
-	errorMsg "Error calling stream set $chassis $card $port $streamId"
-	set retCode $::TCL_ERROR
-}
-
-udf setDefault 
-udf config -repeat                             1
-udf config -continuousCount                    true
-udf config -initval                            {00 00 00 00 }
-udf config -updown                             uuuu
-udf config -cascadeType                        udfCascadeNone
-udf config -step                               1
-packetGroup setDefault 
-packetGroup config -signatureOffset                    48
-packetGroup config -signature                          "08 71 18 05"
-packetGroup config -insertSignature                    true
-packetGroup config -ignoreSignature                    false
-packetGroup config -groupId                            2000
-packetGroup config -groupIdOffset                      52
-packetGroup config -enableGroupIdMask                  false
-packetGroup config -enableInsertPgid                   true
-packetGroup config -groupIdMask                        0
-packetGroup config -latencyControl                     cutThrough
-packetGroup config -measurementMode                    packetGroupModeLatency
-packetGroup config -preambleSize                       8
-packetGroup config -sequenceNumberOffset               44
-packetGroup config -sequenceErrorThreshold             2
-packetGroup config -insertSequenceSignature            false
-packetGroup config -allocateUdf                        true
-packetGroup config -enableSignatureMask                false
-packetGroup config -signatureMask                      "00 00 00 00"
-packetGroup config -enableRxFilter                     false
-packetGroup config -headerFilter                       "00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00"
-packetGroup config -headerFilterMask                   "00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00"
-packetGroup config -enable128kBinMode                  false
-packetGroup config -enableTimeBins                     false
-packetGroup config -numPgidPerTimeBin                  32
-packetGroup config -numTimeBins                        10
-packetGroup config -timeBinDuration                    1000000
-packetGroup config -enableLatencyBins                  false
-packetGroup config -latencyBinList                     ""
-packetGroup config -groupIdMode                        packetGroupCustom
-packetGroup config -sequenceCheckingMode               seqThreshold
-packetGroup config -multiSwitchedPathMode              seqSwitchedPathPGID
-packetGroup config -pgidStatMode                       0
-packetGroup config -enableLastBitTimeStamp             false
-packetGroup config -seqAdvTrackingLateThreshold        1000
-packetGroup config -enableReArmFirstTimeStamp          false
-if {[packetGroup setTx $chassis $card $port $streamId]} {
-	errorMsg "Error calling packetGroup setTx $chassis $card $port $streamId"
 	set retCode $::TCL_ERROR
 }
 
@@ -1110,7 +905,7 @@ stream config -saStep                             1
 stream config -saMaskValue                        "00 00 00 00 00 00"
 stream config -saMaskSelect                       "00 00 00 00 00 00"
 stream config -enableSaContinueFromLastValue      false
-stream config -da                                 "00 00 00 00 00 00"
+stream config -da                                 "00 00 00 00 00 02"
 stream config -daRepeatCounter                    idle
 stream config -daStep                             1
 stream config -daMaskValue                        "00 00 00 00 00 00"

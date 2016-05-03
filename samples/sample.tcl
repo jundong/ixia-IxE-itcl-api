@@ -15,9 +15,13 @@ proc GetEnvTcl { product } {
     }        
     
     set latestKey      [ lindex $versionKey end ]
-    set mutliVKeyIndex [ lsearch $versionKey "Multiversion" ]
-    if { $mutliVKeyIndex > 0 } {
-       set latestKey   [ lindex $versionKey [ expr $mutliVKeyIndex - 2 ] ]
+   if { $latestKey == "Multiversion" } {
+      set latestKey   [ lindex $versionKey [ expr [ llength $versionKey ] - 2 ] ]
+      if { $latestKey == "InstallInfo" } {
+         set latestKey   [ lindex $versionKey [ expr [ llength $versionKey ] - 3 ] ]
+      }
+   } elseif { $latestKey == "InstallInfo" } {
+        set latestKey   [ lindex $versionKey [ expr [ llength $versionKey ] - 2 ] ]
     }
     set installInfo    [ append productKey \\ $latestKey \\ InstallInfo ]            
     return             "[ registry get $installInfo  HOMEDIR ]/TclScripts/bin/ixiawish.tcl"   
@@ -26,1080 +30,197 @@ proc GetEnvTcl { product } {
 # IxOS is optional 
 set ixPath [ GetEnvTcl IxOS ]
 if { [file exists $ixPath] == 1 } {
-    source [ GetEnvTcl IxOS ]
+    source $ixPath
     package require IxTclHal
 }
 
 # Command Option Mode - Full (generate full configuration)
 
-source DemoCIxiaPortETH.tcl
-
-if {[isUNIX]} {
-	if {[ixConnectToTclServer 172.16.174.137]} {
-		errorMsg "Error connecting to Tcl Server 172.16.174.137 "
-		return $::TCL_ERROR
-	}
+proc IxStartPacketGroups {Chas Card Port} {
+    configPacketGroup $Chas $Card $Port
+    
+    lappend portList [list $Chas $Card $Port]
+    #--before we start packetgroups we should stop it first
+    ixStopPacketGroups portList
+    #--start packetgroups-based stats
+    ixStartPacketGroups portList
 }
 
-######### Chassis list - {172.16.174.137} #########
-
-ixConnectToChassis   {172.16.174.137}
-#ixConnectToChassis   {localhost}
-set owner "jxu"
-ixLogin $owner
-
-set portList {}
-
-######### Chassis-172.16.174.137 #########
-
-chassis get "172.16.174.137"
-set ::chassis	  [chassis cget -id]
-
-######### Card Type : Ixia Virtual Load Module ############
-
-set ::card     1
-
-######### Chassis-172.16.174.137 Card-1  Port-1 #########
-
-set ::port     1
-
-port setFactoryDefaults $::chassis $::card $::port
-port config -speed                              1000
-port config -duplex                             full
-port config -flowControl                        false
-port config -directedAddress                    "01 80 C2 00 00 01"
-port config -multicastPauseAddress              "01 80 C2 00 00 01"
-port config -loopback                           portNormal
-port config -transmitMode                       portTxModeAdvancedScheduler
-port config -receiveMode                        [expr $::portCapture|$::portRxSequenceChecking|$::portRxModeWidePacketGroup]
-port config -autonegotiate                      false
-port config -advertise100FullDuplex             false
-port config -advertise100HalfDuplex             false
-port config -advertise10FullDuplex              false
-port config -advertise10HalfDuplex              false
-port config -advertise1000FullDuplex            false
-port config -portMode                           portEthernetMode
-port config -enableDataCenterMode               false
-port config -dataCenterMode                     eightPriorityTrafficMapping
-port config -flowControlType                    ieee8023x
-port config -pfcEnableValueListBitMatrix        ""
-port config -pfcResponseDelayEnabled            0
-port config -pfcResponseDelayQuanta             0
-port config -rxTxMode                           gigNormal
-port config -ignoreLink                         false
-port config -advertiseAbilities                 portAdvertiseNone
-port config -timeoutEnable                      true
-port config -negotiateMasterSlave               0
-port config -masterSlave                        portSlave
-port config -pmaClock                           pmaClockAutoNegotiate
-port config -enableSimulateCableDisconnect      false
-port config -enableAutoDetectInstrumentation    true
-port config -autoDetectInstrumentationMode      portAutoInstrumentationModeFloating
-port config -enableRepeatableLastRandomPattern  false
-port config -transmitClockDeviation             0
-port config -transmitClockMode                  portClockInternal
-port config -preEmphasis                        preEmphasis0
-port config -transmitExtendedTimestamp          0
-port config -operationModeList                  [list]
-port config -MacAddress                         "00 de bb 00 00 01"
-port config -DestMacAddress                     "00 de bb 00 00 02"
-port config -name                               ""
-port config -numAddresses                       1
-port config -enableManualAutoNegotiate          false
-port config -enablePhyPolling                   true
-port config -enableTxRxSyncStatsMode            false
-port config -txRxSyncInterval                   0
-port config -enableTransparentDynamicRateChange false
-port config -enableDynamicMPLSMode              false
-port config -enablePortCpuFlowControl           false
-port config -portCpuFlowControlDestAddr         "01 80 C2 00 00 01"
-port config -portCpuFlowControlSrcAddr          "00 00 01 00 02 00"
-port config -portCpuFlowControlPriority         "0 0 0 0 0 0 0 0"
-port config -portCpuFlowControlType             0
-port config -enableWanIFSStretch                false
-port config -enableRestartStream                false
-port config -enableRxNonIEEEPreamble            false
-port config -enableRsFec                        false
-port config -enableRsFecStats                   false
-port config -enableLinkTraining                 false
-port config -ieeeL1Defaults                     0
-if {[port set $::chassis $::card $::port]} {
-	errorMsg "Error calling port set $::chassis $::card $::port"
-	set retCode $::TCL_ERROR
+proc IxStopPacketGroups {Chas Card Port} {
+    lappend portList [list $Chas $Card $Port]
+    
+    #--stop packetgroups-based stats
+    ixStopPacketGroups portList
 }
 
-stat setDefault 
-stat config -mode                               statNormal
-stat config -enableValidStats                   false
-stat config -enableArpStats                     true
-stat config -enablePosExtendedStats             true
-stat config -enableDhcpStats                    false
-stat config -enableDhcpV6Stats                  false
-stat config -enableEthernetOamStats             false
-stat config -enableFcoeStats                    false
-stat config -fcoeRxSharedStatType1              statFcoeValidFrames
-stat config -fcoeRxSharedStatType2              statFcoeValidFrames
-stat config -enableLldpDcbxStats                false
-stat config -enableBgpStats                     false
-stat config -enableIcmpStats                    true
-stat config -enableOspfStats                    false
-stat config -enableIsisStats                    false
-stat config -enableRsvpStats                    false
-stat config -enableLdpStats                     false
-stat config -enableIgmpStats                    false
-stat config -enableOspfV3Stats                  false
-stat config -enablePimsmStats                   false
-stat config -enableMldStats                     false
-stat config -enableStpStats                     false
-stat config -enableEigrpStats                   false
-stat config -enableBfdStats                     false
-stat config -enableCfmStats                     false
-stat config -enableLacpStats                    false
-stat config -enableOamStats                     false
-stat config -enableMplsTpStats                  false
-stat config -enableElmiStats                    false
-if {[stat set $::chassis $::card $::port]} {
-	errorMsg "Error calling stat set $::chassis $::card $::port"
-	set retCode $::TCL_ERROR
+proc configPacketGroup {Chas Card Port} {
+    lappend portList [list $Chas $Card $Port]
+    
+    port get $Chas $Card $Port
+    port config -receiveMode  [expr $::portCapture|$::portRxSequenceChecking|$::portRxModeWidePacketGroup|$::portRxModePerFlowErrorStats]
+    if [ixWritePortsToHardware portList -noProtocolServer] {
+        IxPuts -red "Can't write config to $Chas $Card $Port"
+        set retVal 1   
+    } 
+    #-- configure stream as well as tx/rx mode
+    set streamid   1
+    set groupId    $streamid
+
+    while {[stream get $Chas $Card $Port $streamid] != 1} {
+        stream config -enableTimestamp  true
+        stream config -name  _${Card}_${Port}_${streamid}
+        if [stream set $Chas $Card $Port $streamid] {
+            puts "Unable to set streams to IxHal!"
+            set retVal 1
+        }
+        
+        set groupId [expr $Card * 100 + $Port * 10 + $streamid]
+        udf setDefault
+        packetGroup setDefault
+        packetGroup config -groupId $groupId
+        packetGroup config -enableGroupIdMask true
+        packetGroup config -enableInsertPgid true
+        packetGroup config -groupIdMask 61440
+        packetGroup config -insertSignature true
+        packetGroup config -latencyControl interArrivalJitter
+        packetGroup config -measurementMode packetGroupModeInterArrivalTime
+        
+        if {[packetGroup setTx $Chas $Card $Port $streamid ]} {
+            puts "Error calling packetGroup setTx $Chas $Card $Port $streamid"
+        } 
+        if {[packetGroup setRx $Chas $Card $Port ]} {
+            puts "Error calling packetGroup setRx $Chas $Card $Port"
+        } 
+        #autoDetectInstrumentation setDefault 
+        #autoDetectInstrumentation config -enableTxAutomaticInstrumentation   true
+        #if {[ eval autoDetectInstrumentation setTx $Chas $Card $Port $streamid ]} {
+        #    puts "Error calling autoDetectInstrumentation on $Chas $Card $Port"
+        #}
+        #
+        incr streamid
+    }
+    
+    #ixSetAutoDetectInstrumentationMode portList
+    if [ixWriteConfigToHardware portList -noProtocolServer] {
+        IxPuts -red "Can't write config to $Chas $Card $Port"
+        set retVal 1  
+    }
+       
+    if { [ ixCheckLinkState portList ] } {
+        puts "Link on one or more ports is down"
+        return 1                            
+    }       
 }
 
-packetGroup setDefault 
-packetGroup config -signatureOffset                    48
-packetGroup config -signature                          "08 71 18 05"
-packetGroup config -insertSignature                    false
-packetGroup config -ignoreSignature                    false
-packetGroup config -groupId                            0
-packetGroup config -groupIdOffset                      52
-packetGroup config -enableGroupIdMask                  false
-packetGroup config -enableInsertPgid                   true
-packetGroup config -groupIdMask                        0
-packetGroup config -latencyControl                     cutThrough
-packetGroup config -measurementMode                    packetGroupModeLatency
-packetGroup config -preambleSize                       8
-packetGroup config -sequenceNumberOffset               44
-packetGroup config -sequenceErrorThreshold             2
-packetGroup config -insertSequenceSignature            false
-packetGroup config -allocateUdf                        true
-packetGroup config -enableSignatureMask                false
-packetGroup config -signatureMask                      "00 00 00 00"
-packetGroup config -enableRxFilter                     false
-packetGroup config -headerFilter                       "00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00"
-packetGroup config -headerFilterMask                   "00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00"
-packetGroup config -enable128kBinMode                  true
-packetGroup config -enableTimeBins                     false
-packetGroup config -numPgidPerTimeBin                  32
-packetGroup config -numTimeBins                        1
-packetGroup config -timeBinDuration                    1000000
-packetGroup config -enableLatencyBins                  false
-packetGroup config -latencyBinList                     ""
-packetGroup config -groupIdMode                        packetGroupCustom
-packetGroup config -sequenceCheckingMode               seqThreshold
-packetGroup config -multiSwitchedPathMode              seqSwitchedPathPGID
-packetGroup config -pgidStatMode                       0
-packetGroup config -enableLastBitTimeStamp             false
-packetGroup config -seqAdvTrackingLateThreshold        1000
-packetGroup config -enableReArmFirstTimeStamp          false
-if {[packetGroup setRx $::chassis $::card $::port]} {
-	errorMsg "Error calling packetGroup setRx $::chassis $::card $::port"
-	set retCode $::TCL_ERROR
+proc SmbStreamStats  { Chas Card Port } {
+    set m_portList [list 1 1 1]
+    lappend m_portList [list 1 2 1]
+    set retVal true
+    set retList [list ]
+    lappend retList $retVal,
+    set txport $Card/$Port
+    set streamid   1
+    while {[stream get $Chas $Card $Port $streamid] != 1} {
+        set name [stream cget -name]
+        set groupId [expr $Card * 100 + $Port * 10 + $streamid]
+        set rxChas ""
+        set rxCard ""
+        set rxPort ""
+        set found false
+        set streamStats ""
+        foreach portList $m_portList {
+            set rxChas [lindex $portList 0]
+            set rxCard [lindex $portList 1]
+            set rxPort [lindex $portList 2]
+            #Don't use port itself as the receive side
+            if {$rxChas == $Chas && $rxCard == $Card && $rxPort == $Port} {
+                continue
+            }
+            set rxport $rxCard/$rxPort
+            if {[packetGroupStats get $rxChas $rxCard $rxPort $groupId $groupId] != 1} {
+                set totalFrames [ packetGroupStats cget -totalFrames ]
+                if { $totalFrames == 0 } {
+                    continue
+                }
+                set found true
+                set minLatency [ packetGroupStats cget -minLatency ]
+                set maxLatency [ packetGroupStats cget -maxLatency ]
+                set maxminInterval [ packetGroupStats cget -maxminInterval ]
+                set averageLatency [ packetGroupStats cget -averageLatency ]
+                set totalByteCount [ packetGroupStats cget -totalByteCount ]
+                set bitRate [ packetGroupStats cget -bitRate ]
+                set byteRate [ packetGroupStats cget -byteRate ]
+                set frameRate [ packetGroupStats cget -frameRate ]
+                set readTimeStamp [ packetGroupStats cget -readTimeStamp ]
+                set firstTimeStamp [ packetGroupStats cget -firstTimeStamp ]
+                set lastTimeStamp [ packetGroupStats cget -lastTimeStamp ]
+                
+                set streamStats "$name,rxFrames $totalFrames"
+                set streamStats "$streamStats $name,minLatency $minLatency"
+                set streamStats "$streamStats $name,maxLatency $maxLatency"
+                set streamStats "$streamStats $name,avgLatency $averageLatency"
+                set streamStats "$streamStats $name,txport $txport"
+                set streamStats "$streamStats $name,rxport $rxport"
+                set streamStats "$streamStats $name,rxBitsRate $bitRate"
+                set streamStats "$streamStats $name,rxFramesRate $frameRate"
+            
+                if {[streamTransmitStats get $Chas $Card $Port $streamid $streamid] != 1} {
+                    set framesSent [streamTransmitStats cget -framesSent]
+                    set txFramesRate [streamTransmitStats cget -frameRate]
+                    set theoreticalAverageFrameRate [streamTransmitStats cget -theoreticalAverageFrameRate]
+                    
+                    set streamStats "$streamStats $name,txFrames $framesSent"
+                    set streamStats "$streamStats $name,txFramesRate $txFramesRate"
+                }
+            } else {
+                continue
+            }
+        }
+        
+        if { !$found } {
+            set streamStats "$name,rxFrames 0"
+            set streamStats "$streamStats $name,minLatency 0"
+            set streamStats "$streamStats $name,maxLatency 0"
+            set streamStats "$streamStats $name,avgLatency 0"
+            set streamStats "$streamStats $name,txport $txport"
+            set streamStats "$streamStats $name,rxBitsRate 0"
+            set streamStats "$streamStats $name,rxFramesRate 0"
+            set streamStats "$streamStats $name,txFrames 0"
+            set streamStats "$streamStats $name,txFramesRate 0"
+        }
+        lappend retList $streamStats
+        incr streamid
+    }
+    return $retList
 }
-
-
-autoDetectInstrumentation setDefault 
-autoDetectInstrumentation config -startOfScan                        0
-autoDetectInstrumentation config -signature                          {87 73 67 49 42 87 11 80 08 71 18 05}
-autoDetectInstrumentation config -enableSignatureMask                false
-autoDetectInstrumentation config -signatureMask                      {00 00 00 00 00 00 00 00 00 00 00 00}
-if {[autoDetectInstrumentation setRx $::chassis $::card $::port]} {
-	errorMsg "Error calling autoDetectInstrumentation setRx $::chassis $::card $::port"
-	set retCode $::TCL_ERROR
-}
-
-filter setDefault 
-filter config -captureTriggerDA                   anyAddr
-filter config -captureTriggerSA                   anyAddr
-filter config -captureTriggerPattern              anyPattern
-filter config -captureTriggerError                errAnyFrame
-filter config -captureTriggerFrameSizeEnable      false
-filter config -captureTriggerFrameSizeFrom        0
-filter config -captureTriggerFrameSizeTo          0
-filter config -captureTriggerCircuit              filterAnyCircuit
-filter config -captureFilterDA                    anyAddr
-filter config -captureFilterSA                    anyAddr
-filter config -captureFilterPattern               anyPattern
-filter config -captureFilterError                 errAnyFrame
-filter config -captureFilterFrameSizeEnable       false
-filter config -captureFilterFrameSizeFrom         0
-filter config -captureFilterFrameSizeTo           0
-filter config -captureFilterCircuit               filterAnyCircuit
-filter config -userDefinedStat1DA                 anyAddr
-filter config -userDefinedStat1SA                 anyAddr
-filter config -userDefinedStat1Pattern            anyPattern
-filter config -userDefinedStat1Error              errAnyFrame
-filter config -userDefinedStat1FrameSizeEnable    false
-filter config -userDefinedStat1FrameSizeFrom      0
-filter config -userDefinedStat1FrameSizeTo        0
-filter config -userDefinedStat1Circuit            filterAnyCircuit
-filter config -userDefinedStat2DA                 anyAddr
-filter config -userDefinedStat2SA                 anyAddr
-filter config -userDefinedStat2Pattern            anyPattern
-filter config -userDefinedStat2Error              errAnyFrame
-filter config -userDefinedStat2FrameSizeEnable    0
-filter config -userDefinedStat2FrameSizeFrom      0
-filter config -userDefinedStat2FrameSizeTo        0
-filter config -userDefinedStat2Circuit            filterAnyCircuit
-filter config -asyncTrigger1DA                    anyAddr
-filter config -asyncTrigger1SA                    anyAddr
-filter config -asyncTrigger1Pattern               anyPattern
-filter config -asyncTrigger1Error                 errAnyFrame
-filter config -asyncTrigger1FrameSizeEnable       false
-filter config -asyncTrigger1FrameSizeFrom         0
-filter config -asyncTrigger1FrameSizeTo           0
-filter config -asyncTrigger1Circuit               filterAnyCircuit
-filter config -asyncTrigger2DA                    anyAddr
-filter config -asyncTrigger2SA                    anyAddr
-filter config -asyncTrigger2Pattern               anyPattern
-filter config -asyncTrigger2Error                 errAnyFrame
-filter config -asyncTrigger2FrameSizeEnable       false
-filter config -asyncTrigger2FrameSizeFrom         0
-filter config -asyncTrigger2FrameSizeTo           0
-filter config -asyncTrigger2Circuit               filterAnyCircuit
-filter config -captureTriggerEnable               true
-filter config -captureFilterEnable                true
-filter config -userDefinedStat1Enable             true
-filter config -userDefinedStat2Enable             true
-filter config -asyncTrigger1Enable                true
-filter config -asyncTrigger2Enable                true
-filter config -userDefinedStat1PatternExpressionEnable false
-filter config -userDefinedStat2PatternExpressionEnable false
-filter config -captureTriggerPatternExpressionEnable false
-filter config -captureFilterPatternExpressionEnable false
-filter config -asyncTrigger1PatternExpressionEnable false
-filter config -asyncTrigger2PatternExpressionEnable false
-filter config -userDefinedStat1PatternExpression  ""
-filter config -userDefinedStat2PatternExpression  ""
-filter config -captureTriggerPatternExpression    ""
-filter config -captureFilterPatternExpression     ""
-filter config -asyncTrigger1PatternExpression     ""
-filter config -asyncTrigger2PatternExpression     ""
-if {[filter set $::chassis $::card $::port]} {
-	errorMsg "Error calling filter set $::chassis $::card $::port"
-	set retCode $::TCL_ERROR
-}
-
-
-filterPallette setDefault 
-filterPallette config -DA1                                "00 00 00 00 00 00"
-filterPallette config -DAMask1                            "00 00 00 00 00 00"
-filterPallette config -DA2                                "00 00 00 00 00 00"
-filterPallette config -DAMask2                            "00 00 00 00 00 00"
-filterPallette config -SA1                                "00 00 00 00 00 00"
-filterPallette config -SAMask1                            "00 00 00 00 00 00"
-filterPallette config -SA2                                "00 00 00 00 00 00"
-filterPallette config -SAMask2                            "00 00 00 00 00 00"
-filterPallette config -pattern1                           00
-filterPallette config -patternMask1                       00
-filterPallette config -pattern2                           00
-filterPallette config -patternMask2                       00
-filterPallette config -pattern3                           ""
-filterPallette config -patternMask3                       ""
-filterPallette config -pattern4                           ""
-filterPallette config -patternMask4                       ""
-filterPallette config -patternOffset1                     20
-filterPallette config -patternOffset2                     20
-filterPallette config -patternOffset3                     0
-filterPallette config -patternOffset4                     0
-filterPallette config -matchType1                         matchUser
-filterPallette config -matchType2                         matchUser
-filterPallette config -matchType3                         3
-filterPallette config -matchType4                         3
-filterPallette config -patternOffsetType1                 filterPalletteOffsetStartOfFrame
-filterPallette config -patternOffsetType2                 filterPalletteOffsetStartOfFrame
-filterPallette config -patternOffsetType3                 0
-filterPallette config -patternOffsetType4                 0
-filterPallette config -gfpErrorCondition                  gfpErrorsOr
-filterPallette config -enableGfptHecError                 true
-filterPallette config -enableGfpeHecError                 true
-filterPallette config -enableGfpPayloadCrcError           true
-filterPallette config -enableGfpBadFcsError               true
-filterPallette config -circuitList                        ""
-filterPallette config -range1Min                          0
-filterPallette config -range1Max                          0
-filterPallette config -range2Min                          0
-filterPallette config -range2Max                          0
-filterPallette config -range3Min                          0
-filterPallette config -range3Max                          0
-filterPallette config -range4Min                          0
-filterPallette config -range4Max                          0
-filterPallette config -range1MatchMinMaxOnly              0
-filterPallette config -range2MatchMinMaxOnly              0
-filterPallette config -range3MatchMinMaxOnly              0
-filterPallette config -range4MatchMinMaxOnly              0
-if {[filterPallette set $::chassis $::card $::port]} {
-	errorMsg "Error calling filterPallette set $::chassis $::card $::port"
-	set retCode $::TCL_ERROR
-}
-
-
-ipAddressTable setDefault 
-ipAddressTable config -defaultGateway                     "0.0.0.0"
-if {[ipAddressTable set $::chassis $::card $::port]} {
-	errorMsg "Error calling ipAddressTable set $::chassis $::card $::port"
-	set retCode $::TCL_ERROR
-}
-
-
-if {[interfaceTable select $::chassis $::card $::port]} {
-	errorMsg "Error calling interfaceTable select $::chassis $::card $::port"
-	set retCode $::TCL_ERROR
-}
-
-interfaceTable setDefault 
-interfaceTable config -dhcpV4RequestRate                  0
-interfaceTable config -dhcpV6RequestRate                  0
-interfaceTable config -dhcpV4MaximumOutstandingRequests   100
-interfaceTable config -dhcpV6MaximumOutstandingRequests   100
-interfaceTable config -fcoeRequestRate                    500
-interfaceTable config -fcoeNumRetries                     5
-interfaceTable config -fcoeRetryInterval                  2000
-interfaceTable config -fipVersion                         fipVersion1
-interfaceTable config -enableFcfMac                       false
-interfaceTable config -fcfMacCollectionTime               1000
-interfaceTable config -enablePMacInFpma                   true
-interfaceTable config -enableNameIdInVLANDiscovery        false
-interfaceTable config -enableTargetLinkLayerAddrOption    false
-interfaceTable config -enableAutoNeighborDiscovery        false
-interfaceTable config -enableAutoArp                      false
-if {[interfaceTable set]} {
-	errorMsg "Error calling interfaceTable set"
-	set retCode $::TCL_ERROR
-}
-
-interfaceTable clearAllInterfaces 
-if {[interfaceTable write]} {
-	errorMsg "Error calling interfaceTable write"
-	set retCode $::TCL_ERROR
-}
-
-oamPort setDefault 
-oamPort config -enable                             false
-oamPort config -macAddress                         "00 00 AB BA DE AD"
-oamPort config -enableLoopback                     false
-oamPort config -enableLinkEvents                   false
-oamPort config -maxOamPduSize                      1518
-oamPort config -oui                                "00 00 00"
-oamPort config -vendorSpecificInformation          "00 00 00 00"
-oamPort config -idleTimer                          5
-oamPort config -enableOptionalTlv                  false
-oamPort config -optionalTlvType                    254
-oamPort config -optionalTlvValue                   ""
-if {[oamPort set $::chassis $::card $::port]} {
-	errorMsg "Error calling oamPort set $::chassis $::card $::port"
-	set retCode $::TCL_ERROR
-}
-
-lappend portList [list $::chassis $::card $::port]
-
-######### Card Type : Ixia Virtual Load Module ############
-
-set card     2
-
-######### Chassis-172.16.174.137 Card-2  Port-1 #########
-
-set port     1
-
-port setFactoryDefaults $::chassis $::card $::port
-port config -speed                              1000
-port config -duplex                             full
-port config -flowControl                        false
-port config -directedAddress                    "01 80 C2 00 00 01"
-port config -multicastPauseAddress              "01 80 C2 00 00 01"
-port config -loopback                           portNormal
-port config -transmitMode                       portTxModeAdvancedScheduler
-port config -receiveMode                        [expr $::portCapture|$::portRxSequenceChecking|$::portRxModeWidePacketGroup]
-port config -autonegotiate                      false
-port config -advertise100FullDuplex             false
-port config -advertise100HalfDuplex             false
-port config -advertise10FullDuplex              false
-port config -advertise10HalfDuplex              false
-port config -advertise1000FullDuplex            false
-port config -portMode                           portEthernetMode
-port config -enableDataCenterMode               false
-port config -dataCenterMode                     eightPriorityTrafficMapping
-port config -flowControlType                    ieee8023x
-port config -pfcEnableValueListBitMatrix        ""
-port config -pfcResponseDelayEnabled            0
-port config -pfcResponseDelayQuanta             0
-port config -rxTxMode                           gigNormal
-port config -ignoreLink                         false
-port config -advertiseAbilities                 portAdvertiseNone
-port config -timeoutEnable                      true
-port config -negotiateMasterSlave               0
-port config -masterSlave                        portSlave
-port config -pmaClock                           pmaClockAutoNegotiate
-port config -enableSimulateCableDisconnect      false
-port config -enableAutoDetectInstrumentation    true
-port config -autoDetectInstrumentationMode      portAutoInstrumentationModeFloating
-port config -enableRepeatableLastRandomPattern  false
-port config -transmitClockDeviation             0
-port config -transmitClockMode                  portClockInternal
-port config -preEmphasis                        preEmphasis0
-port config -transmitExtendedTimestamp          0
-port config -operationModeList                  [list]
-port config -MacAddress                         "00 de bb 00 00 01"
-port config -DestMacAddress                     "00 de bb 00 00 02"
-port config -name                               ""
-port config -numAddresses                       1
-port config -enableManualAutoNegotiate          false
-port config -enablePhyPolling                   true
-port config -enableTxRxSyncStatsMode            false
-port config -txRxSyncInterval                   0
-port config -enableTransparentDynamicRateChange false
-port config -enableDynamicMPLSMode              false
-port config -enablePortCpuFlowControl           false
-port config -portCpuFlowControlDestAddr         "01 80 C2 00 00 01"
-port config -portCpuFlowControlSrcAddr          "00 00 01 00 02 00"
-port config -portCpuFlowControlPriority         "0 0 0 0 0 0 0 0"
-port config -portCpuFlowControlType             0
-port config -enableWanIFSStretch                false
-port config -enableRestartStream                false
-port config -enableRxNonIEEEPreamble            false
-port config -enableRsFec                        false
-port config -enableRsFecStats                   false
-port config -enableLinkTraining                 false
-port config -ieeeL1Defaults                     0
-if {[port set $::chassis $::card $::port]} {
-	errorMsg "Error calling port set $::chassis $::card $::port"
-	set retCode $::TCL_ERROR
-}
-
-stat setDefault 
-stat config -mode                               statNormal
-stat config -enableValidStats                   false
-stat config -enableArpStats                     true
-stat config -enablePosExtendedStats             true
-stat config -enableDhcpStats                    false
-stat config -enableDhcpV6Stats                  false
-stat config -enableEthernetOamStats             false
-stat config -enableFcoeStats                    false
-stat config -fcoeRxSharedStatType1              statFcoeValidFrames
-stat config -fcoeRxSharedStatType2              statFcoeValidFrames
-stat config -enableLldpDcbxStats                false
-stat config -enableBgpStats                     false
-stat config -enableIcmpStats                    true
-stat config -enableOspfStats                    false
-stat config -enableIsisStats                    false
-stat config -enableRsvpStats                    false
-stat config -enableLdpStats                     false
-stat config -enableIgmpStats                    false
-stat config -enableOspfV3Stats                  false
-stat config -enablePimsmStats                   false
-stat config -enableMldStats                     false
-stat config -enableStpStats                     false
-stat config -enableEigrpStats                   false
-stat config -enableBfdStats                     false
-stat config -enableCfmStats                     false
-stat config -enableLacpStats                    false
-stat config -enableOamStats                     false
-stat config -enableMplsTpStats                  false
-stat config -enableElmiStats                    false
-if {[stat set $::chassis $::card $::port]} {
-	errorMsg "Error calling stat set $::chassis $::card $::port"
-	set retCode $::TCL_ERROR
-}
-
-packetGroup setDefault 
-packetGroup config -signatureOffset                    48
-packetGroup config -signature                          "08 71 18 05"
-packetGroup config -insertSignature                    false
-packetGroup config -ignoreSignature                    false
-packetGroup config -groupId                            0
-packetGroup config -groupIdOffset                      52
-packetGroup config -enableGroupIdMask                  false
-packetGroup config -enableInsertPgid                   true
-packetGroup config -groupIdMask                        0
-packetGroup config -latencyControl                     cutThrough
-packetGroup config -measurementMode                    packetGroupModeLatency
-packetGroup config -preambleSize                       8
-packetGroup config -sequenceNumberOffset               44
-packetGroup config -sequenceErrorThreshold             2
-packetGroup config -insertSequenceSignature            false
-packetGroup config -allocateUdf                        true
-packetGroup config -enableSignatureMask                false
-packetGroup config -signatureMask                      "00 00 00 00"
-packetGroup config -enableRxFilter                     false
-packetGroup config -headerFilter                       "00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00"
-packetGroup config -headerFilterMask                   "00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00"
-packetGroup config -enable128kBinMode                  true
-packetGroup config -enableTimeBins                     false
-packetGroup config -numPgidPerTimeBin                  32
-packetGroup config -numTimeBins                        1
-packetGroup config -timeBinDuration                    1000000
-packetGroup config -enableLatencyBins                  false
-packetGroup config -latencyBinList                     ""
-packetGroup config -groupIdMode                        packetGroupCustom
-packetGroup config -sequenceCheckingMode               seqThreshold
-packetGroup config -multiSwitchedPathMode              seqSwitchedPathPGID
-packetGroup config -pgidStatMode                       0
-packetGroup config -enableLastBitTimeStamp             false
-packetGroup config -seqAdvTrackingLateThreshold        1000
-packetGroup config -enableReArmFirstTimeStamp          false
-if {[packetGroup setRx $::chassis $::card $::port]} {
-	errorMsg "Error calling packetGroup setRx $::chassis $::card $::port"
-	set retCode $::TCL_ERROR
-}
-
-
-autoDetectInstrumentation setDefault 
-autoDetectInstrumentation config -startOfScan                        0
-autoDetectInstrumentation config -signature                          {87 73 67 49 42 87 11 80 08 71 18 05}
-autoDetectInstrumentation config -enableSignatureMask                false
-autoDetectInstrumentation config -signatureMask                      {00 00 00 00 00 00 00 00 00 00 00 00}
-if {[autoDetectInstrumentation setRx $::chassis $::card $::port]} {
-	errorMsg "Error calling autoDetectInstrumentation setRx $::chassis $::card $::port"
-	set retCode $::TCL_ERROR
-}
-
-filter setDefault 
-filter config -captureTriggerDA                   anyAddr
-filter config -captureTriggerSA                   anyAddr
-filter config -captureTriggerPattern              anyPattern
-filter config -captureTriggerError                errAnyFrame
-filter config -captureTriggerFrameSizeEnable      false
-filter config -captureTriggerFrameSizeFrom        0
-filter config -captureTriggerFrameSizeTo          0
-filter config -captureTriggerCircuit              filterAnyCircuit
-filter config -captureFilterDA                    anyAddr
-filter config -captureFilterSA                    anyAddr
-filter config -captureFilterPattern               anyPattern
-filter config -captureFilterError                 errAnyFrame
-filter config -captureFilterFrameSizeEnable       false
-filter config -captureFilterFrameSizeFrom         0
-filter config -captureFilterFrameSizeTo           0
-filter config -captureFilterCircuit               filterAnyCircuit
-filter config -userDefinedStat1DA                 anyAddr
-filter config -userDefinedStat1SA                 anyAddr
-filter config -userDefinedStat1Pattern            anyPattern
-filter config -userDefinedStat1Error              errAnyFrame
-filter config -userDefinedStat1FrameSizeEnable    false
-filter config -userDefinedStat1FrameSizeFrom      0
-filter config -userDefinedStat1FrameSizeTo        0
-filter config -userDefinedStat1Circuit            filterAnyCircuit
-filter config -userDefinedStat2DA                 anyAddr
-filter config -userDefinedStat2SA                 anyAddr
-filter config -userDefinedStat2Pattern            anyPattern
-filter config -userDefinedStat2Error              errAnyFrame
-filter config -userDefinedStat2FrameSizeEnable    0
-filter config -userDefinedStat2FrameSizeFrom      0
-filter config -userDefinedStat2FrameSizeTo        0
-filter config -userDefinedStat2Circuit            filterAnyCircuit
-filter config -asyncTrigger1DA                    anyAddr
-filter config -asyncTrigger1SA                    anyAddr
-filter config -asyncTrigger1Pattern               anyPattern
-filter config -asyncTrigger1Error                 errAnyFrame
-filter config -asyncTrigger1FrameSizeEnable       false
-filter config -asyncTrigger1FrameSizeFrom         0
-filter config -asyncTrigger1FrameSizeTo           0
-filter config -asyncTrigger1Circuit               filterAnyCircuit
-filter config -asyncTrigger2DA                    anyAddr
-filter config -asyncTrigger2SA                    anyAddr
-filter config -asyncTrigger2Pattern               anyPattern
-filter config -asyncTrigger2Error                 errAnyFrame
-filter config -asyncTrigger2FrameSizeEnable       false
-filter config -asyncTrigger2FrameSizeFrom         0
-filter config -asyncTrigger2FrameSizeTo           0
-filter config -asyncTrigger2Circuit               filterAnyCircuit
-filter config -captureTriggerEnable               true
-filter config -captureFilterEnable                true
-filter config -userDefinedStat1Enable             true
-filter config -userDefinedStat2Enable             true
-filter config -asyncTrigger1Enable                true
-filter config -asyncTrigger2Enable                true
-filter config -userDefinedStat1PatternExpressionEnable false
-filter config -userDefinedStat2PatternExpressionEnable false
-filter config -captureTriggerPatternExpressionEnable false
-filter config -captureFilterPatternExpressionEnable false
-filter config -asyncTrigger1PatternExpressionEnable false
-filter config -asyncTrigger2PatternExpressionEnable false
-filter config -userDefinedStat1PatternExpression  ""
-filter config -userDefinedStat2PatternExpression  ""
-filter config -captureTriggerPatternExpression    ""
-filter config -captureFilterPatternExpression     ""
-filter config -asyncTrigger1PatternExpression     ""
-filter config -asyncTrigger2PatternExpression     ""
-if {[filter set $::chassis $::card $::port]} {
-	errorMsg "Error calling filter set $::chassis $::card $::port"
-	set retCode $::TCL_ERROR
-}
-
-
-filterPallette setDefault 
-filterPallette config -DA1                                "00 00 00 00 00 00"
-filterPallette config -DAMask1                            "00 00 00 00 00 00"
-filterPallette config -DA2                                "00 00 00 00 00 00"
-filterPallette config -DAMask2                            "00 00 00 00 00 00"
-filterPallette config -SA1                                "00 00 00 00 00 00"
-filterPallette config -SAMask1                            "00 00 00 00 00 00"
-filterPallette config -SA2                                "00 00 00 00 00 00"
-filterPallette config -SAMask2                            "00 00 00 00 00 00"
-filterPallette config -pattern1                           00
-filterPallette config -patternMask1                       00
-filterPallette config -pattern2                           00
-filterPallette config -patternMask2                       00
-filterPallette config -pattern3                           ""
-filterPallette config -patternMask3                       ""
-filterPallette config -pattern4                           ""
-filterPallette config -patternMask4                       ""
-filterPallette config -patternOffset1                     20
-filterPallette config -patternOffset2                     20
-filterPallette config -patternOffset3                     0
-filterPallette config -patternOffset4                     0
-filterPallette config -matchType1                         matchUser
-filterPallette config -matchType2                         matchUser
-filterPallette config -matchType3                         3
-filterPallette config -matchType4                         3
-filterPallette config -patternOffsetType1                 filterPalletteOffsetStartOfFrame
-filterPallette config -patternOffsetType2                 filterPalletteOffsetStartOfFrame
-filterPallette config -patternOffsetType3                 0
-filterPallette config -patternOffsetType4                 0
-filterPallette config -gfpErrorCondition                  gfpErrorsOr
-filterPallette config -enableGfptHecError                 true
-filterPallette config -enableGfpeHecError                 true
-filterPallette config -enableGfpPayloadCrcError           true
-filterPallette config -enableGfpBadFcsError               true
-filterPallette config -circuitList                        ""
-filterPallette config -range1Min                          0
-filterPallette config -range1Max                          0
-filterPallette config -range2Min                          0
-filterPallette config -range2Max                          0
-filterPallette config -range3Min                          0
-filterPallette config -range3Max                          0
-filterPallette config -range4Min                          0
-filterPallette config -range4Max                          0
-filterPallette config -range1MatchMinMaxOnly              0
-filterPallette config -range2MatchMinMaxOnly              0
-filterPallette config -range3MatchMinMaxOnly              0
-filterPallette config -range4MatchMinMaxOnly              0
-if {[filterPallette set $::chassis $::card $::port]} {
-	errorMsg "Error calling filterPallette set $::chassis $::card $::port"
-	set retCode $::TCL_ERROR
-}
-
-
-ipAddressTable setDefault 
-ipAddressTable config -defaultGateway                     "0.0.0.0"
-if {[ipAddressTable set $::chassis $::card $::port]} {
-	errorMsg "Error calling ipAddressTable set $::chassis $::card $::port"
-	set retCode $::TCL_ERROR
-}
-
-
-if {[interfaceTable select $::chassis $::card $::port]} {
-	errorMsg "Error calling interfaceTable select $::chassis $::card $::port"
-	set retCode $::TCL_ERROR
-}
-
-interfaceTable setDefault 
-interfaceTable config -dhcpV4RequestRate                  0
-interfaceTable config -dhcpV6RequestRate                  0
-interfaceTable config -dhcpV4MaximumOutstandingRequests   100
-interfaceTable config -dhcpV6MaximumOutstandingRequests   100
-interfaceTable config -fcoeRequestRate                    500
-interfaceTable config -fcoeNumRetries                     5
-interfaceTable config -fcoeRetryInterval                  2000
-interfaceTable config -fipVersion                         fipVersion1
-interfaceTable config -enableFcfMac                       false
-interfaceTable config -fcfMacCollectionTime               1000
-interfaceTable config -enablePMacInFpma                   true
-interfaceTable config -enableNameIdInVLANDiscovery        false
-interfaceTable config -enableTargetLinkLayerAddrOption    false
-interfaceTable config -enableAutoNeighborDiscovery        false
-interfaceTable config -enableAutoArp                      false
-if {[interfaceTable set]} {
-	errorMsg "Error calling interfaceTable set"
-	set retCode $::TCL_ERROR
-}
-
-interfaceTable clearAllInterfaces 
-if {[interfaceTable write]} {
-	errorMsg "Error calling interfaceTable write"
-	set retCode $::TCL_ERROR
-}
-
-oamPort setDefault 
-oamPort config -enable                             false
-oamPort config -macAddress                         "00 00 AB BA DE AD"
-oamPort config -enableLoopback                     false
-oamPort config -enableLinkEvents                   false
-oamPort config -maxOamPduSize                      1518
-oamPort config -oui                                "00 00 00"
-oamPort config -vendorSpecificInformation          "00 00 00 00"
-oamPort config -idleTimer                          5
-oamPort config -enableOptionalTlv                  false
-oamPort config -optionalTlvType                    254
-oamPort config -optionalTlvValue                   ""
-if {[oamPort set $::chassis $::card $::port]} {
-	errorMsg "Error calling oamPort set $::chassis $::card $::port"
-	set retCode $::TCL_ERROR
-}
-
-lappend portList [list $::chassis $::card $::port]
-ixWritePortsToHardware portList
-ixCheckLinkState portList
-
-
-
-###################################################################
-######### Generating streams for all the ports from above #########
-###################################################################
-
-
-######### Chassis-172.16.174.137 Card-1  Port-1 #########
-
-chassis get "172.16.174.137"
-set ::chassis	  [chassis cget -id]
-set ::card     1
-set ::port     1
-streamRegion get $::chassis $::card $::port
-if {[streamRegion enableGenerateWarningList  $::chassis $::card $::port 0]} {
-	errorMsg "Error calling streamRegion enableGenerateWarningList  $::chassis $::card $::port 0"
-	set retCode $::TCL_ERROR
-}
-
-set streamId 1
-
-if {[port resetStreamProtocolStack $::chassis $::card $::port]} {
-	errorMsg "Error calling port resetStreamProtocolStack $::chassis $::card $::port"
-	set retCode $::TCL_ERROR
-}
-
-#  Stream 1
-stream setDefault 
-stream config -name                               ""
-stream config -enable                             true
-stream config -enableSuspend                      false
-stream config -region                             0
-stream config -numBursts                          1
-stream config -numFrames                          100
-stream config -ifg                                96.0
-stream config -ifgType                            gapFixed
-stream config -ifgMIN                             96.0
-stream config -ifgMAX                             96.0
-stream config -ibg                                96.0
-stream config -enableIbg                          false
-stream config -isg                                96.0
-stream config -enableIsg                          false
-stream config -gapUnit                            gapNanoSeconds
-stream config -percentPacketRate                  99.99999999999999
-stream config -fpsRate                            81274.38231469439
-stream config -bpsRate                            986996098.8296487
-stream config -rateMode                           streamRateModePercentRate
-stream config -preambleSize                       8
-stream config -preambleData                       "55 55 55 55 55 55 D5"
-stream config -sa                                 "00 0C 29 1D 0D 9B"
-stream config -saRepeatCounter                    idle
-stream config -saStep                             1
-stream config -saMaskValue                        "00 00 00 00 00 00"
-stream config -saMaskSelect                       "00 00 00 00 00 00"
-stream config -enableSaContinueFromLastValue      false
-stream config -da                                 "00 00 00 00 01 00"
-stream config -daRepeatCounter                    idle
-stream config -daStep                             1
-stream config -daMaskValue                        "00 00 00 00 00 00"
-stream config -daMaskSelect                       "00 00 00 00 00 00"
-stream config -enableDaContinueFromLastValue      false
-stream config -framesize                          1518
-stream config -frameSizeType                      sizeFixed
-stream config -frameSizeMIN                       1518
-stream config -frameSizeMAX                       1518
-stream config -frameSizeStep                      1
-stream config -enableTimestamp                    false
-stream config -fcs                                good
-stream config -patternType                        incrByte
-stream config -dataPattern                        x00010203
-stream config -pattern                            "00 01 02 03"
-stream config -frameType                          "08 00"
-stream config -numDA                              16
-stream config -numSA                              16
-stream config -dma                                contPacket
-stream config -rxTriggerEnable                    false
-stream config -asyncIntEnable                     true
-stream config -loopCount                          1
-stream config -returnToId                         1
-stream config -enforceMinGap                      12
-stream config -enableStatistic                    true
-stream config -enableIncrFrameBurstOverride       false
-stream config -enableDisparityError               false
-stream config -forceDisableDataMangling           0
-stream config -enableSourceInterface              false
-stream config -sourceInterfaceDescription         ""
-stream config -startTxDelayUnit                   4
-stream config -startTxDelay                       0.0
-stream config -priorityGroup                      priorityGroup0
-
-protocol setDefault 
-protocol config -name                               ipV4
-protocol config -appName                            noType
-protocol config -ethernetType                       ethernetII
-protocol config -enable802dot1qTag                  vlanNone
-protocol config -enableISLtag                       false
-protocol config -enableMPLS                         false
-protocol config -enableMacSec                       false
-protocol config -enableOAM                          false
-protocol config -enableProtocolPad                  false
-
-ip setDefault 
-ip config -precedence                         routine
-ip config -delay                              normalDelay
-ip config -throughput                         normalThruput
-ip config -reliability                        normalReliability
-ip config -identifier                         0
-ip config -cost                               0
-ip config -reserved                           0
-ip config -totalLength                        1500
-ip config -lengthOverride                     false
-ip config -headerLength                       20
-ip config -enableHeaderLengthOverride         false
-ip config -fragment                           may
-ip config -lastFragment                       last
-ip config -fragmentOffset                     0
-ip config -ttl                                64
-ip config -ipProtocol                         ipV4ProtocolOspf
-ip config -useValidChecksum                   ipV4ValidChecksum
-ip config -checksum                           "b6 65"
-ip config -sourceIpAddr                       "6.6.6.6"
-ip config -sourceIpMask                       "255.0.0.0"
-ip config -sourceIpAddrMode                   ipIdle
-ip config -sourceIpAddrRepeatCount            10
-ip config -sourceClass                        classA
-ip config -enableSourceSyncFromPpp            false
-ip config -destIpAddr                         "3.3.3.3"
-ip config -destIpMask                         "255.0.0.0"
-ip config -destIpAddrMode                     ipIdle
-ip config -destIpAddrRepeatCount              10
-ip config -destClass                          classA
-ip config -destMacAddr                        "00 DE BB 00 00 02"
-ip config -destDutIpAddr                      "0.0.0.0"
-ip config -options                            ""
-ip config -enableDestSyncFromPpp              false
-ip config -qosMode                            ipV4ConfigTos
-ip config -dscpMode                           ipV4DscpDefault
-ip config -dscpValue                          0x00
-ip config -classSelector                      ipV4DscpClass1
-ip config -assuredForwardingClass             ipV4DscpAssuredForwardingClass1
-ip config -assuredForwardingPrecedence        ipV4DscpPrecedenceLowDrop
-if {[ip set $::chassis $::card $::port]} {
-	errorMsg "Error calling ip set $::chassis $::card $::port"
-	set retCode $::TCL_ERROR
-}
-
-
-
-
-if {[port isValidFeature $::chassis $::card $::port $::portFeatureTableUdf]} { 
-	tableUdf setDefault
-	tableUdf clearColumns
-	if {[tableUdf set $::chassis $::card $::port]} {
-		errorMsg "Error calling tableUdf set $::chassis $::card $::port"
-		set retCode $::TCL_ERROR
-	}
-
-}
-
-
-if {[port isValidFeature $::chassis $::card $::port $::portFeatureRandomFrameSizeWeightedPair]} { 
-	weightedRandomFramesize setDefault
-	if {[weightedRandomFramesize set $::chassis $::card $::port]} {
-		errorMsg "Error calling weightedRandomFramesize set $::chassis $::card $::port"
-		set retCode $::TCL_ERROR
-	}
-
-}
-
-if {[stream set $::chassis $::card $::port $streamId]} {
-	errorMsg "Error calling stream set $::chassis $::card $::port $streamId"
-	set retCode $::TCL_ERROR
-}
-
-incr streamId
-streamRegion generateWarningList $::chassis $::card $::port
-
-######### Chassis-172.16.174.137 Card-2  Port-1 #########
-
-set card     2
-set port     1
-streamRegion get $::chassis $::card $::port
-if {[streamRegion enableGenerateWarningList  $::chassis $::card $::port 0]} {
-	errorMsg "Error calling streamRegion enableGenerateWarningList  $::chassis $::card $::port 0"
-	set retCode $::TCL_ERROR
-}
-
-set streamId 1
-
-if {[port resetStreamProtocolStack $::chassis $::card $::port]} {
-	errorMsg "Error calling port resetStreamProtocolStack $::chassis $::card $::port"
-	set retCode $::TCL_ERROR
-}
-
-#  Stream 1
-stream setDefault 
-stream config -name                               ""
-stream config -enable                             true
-stream config -enableSuspend                      false
-stream config -region                             0
-stream config -numBursts                          1
-stream config -numFrames                          100
-stream config -ifg                                96.0
-stream config -ifgType                            gapFixed
-stream config -ifgMIN                             96.0
-stream config -ifgMAX                             96.0
-stream config -ibg                                96.0
-stream config -enableIbg                          false
-stream config -isg                                96.0
-stream config -enableIsg                          false
-stream config -gapUnit                            gapNanoSeconds
-stream config -percentPacketRate                  99.99999999999999
-stream config -fpsRate                            81274.38231469439
-stream config -bpsRate                            986996098.8296487
-stream config -rateMode                           streamRateModePercentRate
-stream config -preambleSize                       8
-stream config -preambleData                       "55 55 55 55 55 55 D5"
-stream config -sa                                 "00 0C 29 2B 81 92"
-stream config -saRepeatCounter                    idle
-stream config -saStep                             1
-stream config -saMaskValue                        "00 00 00 00 00 00"
-stream config -saMaskSelect                       "00 00 00 00 00 00"
-stream config -enableSaContinueFromLastValue      false
-stream config -da                                 "00 00 01 00 01 00"
-stream config -daRepeatCounter                    idle
-stream config -daStep                             1
-stream config -daMaskValue                        "00 00 00 00 00 00"
-stream config -daMaskSelect                       "00 00 00 00 00 00"
-stream config -enableDaContinueFromLastValue      false
-stream config -framesize                          1518
-stream config -frameSizeType                      sizeFixed
-stream config -frameSizeMIN                       1518
-stream config -frameSizeMAX                       1518
-stream config -frameSizeStep                      1
-stream config -enableTimestamp                    false
-stream config -fcs                                good
-stream config -patternType                        incrByte
-stream config -dataPattern                        x00010203
-stream config -pattern                            "00 01 02 03"
-stream config -frameType                          "08 00"
-stream config -numDA                              16
-stream config -numSA                              16
-stream config -dma                                contPacket
-stream config -rxTriggerEnable                    false
-stream config -asyncIntEnable                     true
-stream config -loopCount                          1
-stream config -returnToId                         1
-stream config -enforceMinGap                      12
-stream config -enableStatistic                    true
-stream config -enableIncrFrameBurstOverride       false
-stream config -enableDisparityError               false
-stream config -forceDisableDataMangling           0
-stream config -enableSourceInterface              false
-stream config -sourceInterfaceDescription         ""
-stream config -startTxDelayUnit                   4
-stream config -startTxDelay                       0.0
-stream config -priorityGroup                      priorityGroup0
-
-protocol setDefault 
-protocol config -name                               ipV4
-protocol config -appName                            noType
-protocol config -ethernetType                       ethernetII
-protocol config -enable802dot1qTag                  vlanNone
-protocol config -enableISLtag                       false
-protocol config -enableMPLS                         false
-protocol config -enableMacSec                       false
-protocol config -enableOAM                          false
-protocol config -enableProtocolPad                  false
-
-ip setDefault 
-ip config -precedence                         routine
-ip config -delay                              normalDelay
-ip config -throughput                         normalThruput
-ip config -reliability                        normalReliability
-ip config -identifier                         0
-ip config -cost                               0
-ip config -reserved                           0
-ip config -totalLength                        1500
-ip config -lengthOverride                     false
-ip config -headerLength                       20
-ip config -enableHeaderLengthOverride         false
-ip config -fragment                           may
-ip config -lastFragment                       last
-ip config -fragmentOffset                     0
-ip config -ttl                                64
-ip config -ipProtocol                         ipV4ProtocolOspf
-ip config -useValidChecksum                   ipV4ValidChecksum
-ip config -checksum                           "b6 65"
-ip config -sourceIpAddr                       "1.1.1.1"
-ip config -sourceIpMask                       "255.0.0.0"
-ip config -sourceIpAddrMode                   ipIdle
-ip config -sourceIpAddrRepeatCount            10
-ip config -sourceClass                        classA
-ip config -enableSourceSyncFromPpp            false
-ip config -destIpAddr                         "9.9.9.9"
-ip config -destIpMask                         "255.0.0.0"
-ip config -destIpAddrMode                     ipIdle
-ip config -destIpAddrRepeatCount              10
-ip config -destClass                          classA
-ip config -destMacAddr                        "00 DE BB 00 00 02"
-ip config -destDutIpAddr                      "0.0.0.0"
-ip config -options                            ""
-ip config -enableDestSyncFromPpp              false
-ip config -qosMode                            ipV4ConfigTos
-ip config -dscpMode                           ipV4DscpDefault
-ip config -dscpValue                          0x00
-ip config -classSelector                      ipV4DscpClass1
-ip config -assuredForwardingClass             ipV4DscpAssuredForwardingClass1
-ip config -assuredForwardingPrecedence        ipV4DscpPrecedenceLowDrop
-if {[ip set $::chassis $::card $::port]} {
-	errorMsg "Error calling ip set $::chassis $::card $::port"
-	set retCode $::TCL_ERROR
-}
-
-
-
-
-if {[port isValidFeature $::chassis $::card $::port $::portFeatureTableUdf]} { 
-	tableUdf setDefault
-	tableUdf clearColumns
-	if {[tableUdf set $::chassis $::card $::port]} {
-		errorMsg "Error calling tableUdf set $::chassis $::card $::port"
-		set retCode $::TCL_ERROR
-	}
-
-}
-
-
-if {[port isValidFeature $::chassis $::card $::port $::portFeatureRandomFrameSizeWeightedPair]} { 
-	weightedRandomFramesize setDefault
-	if {[weightedRandomFramesize set $::chassis $::card $::port]} {
-		errorMsg "Error calling weightedRandomFramesize set $::chassis $::card $::port"
-		set retCode $::TCL_ERROR
-	}
-}
-
-if {[stream set $::chassis $::card $::port $streamId]} {
-	errorMsg "Error calling stream set $::chassis $::card $::port $streamId"
-	set retCode $::TCL_ERROR
-}
-
-#DeleteAllStream
-#SetTxSpeed 88
-#SetCustomPkt "01 00 5e 00 00 01 00 00 00 00 00 01 81 00 f0 63 08 00 45 00 00 28 00 00 00 00 01 02 98 37 c4 83 7d 03 e0 00 00 16 22 00 ea 41 00 00 00 01 01 00 00 01 e1 01 01 01 8e b5 82 03 00 00 00 00 00 00"
-#SetPortAddress "00:00:00:00:11:11" "1.1.1.10" "255.255.255.0" 1
-#SetTxSpeed 88
-
-incr streamId
-streamRegion generateWarningList $::chassis $::card $::port
-ixWriteConfigToHardware portList -noProtocolServer
-
-SetIGMPv1Group 225.0.0.1 100 JOIN 100 2 1.1.1.1 9999-9999-9999
-SetIGMPv2Group 225.0.0.1 100 JOIN 100 2 1.1.1.1 9999-9999-9999
-
-streamRegion generateWarningList $::chassis $::card $::port
-ixWriteConfigToHardware portList -noProtocolServer
+    
+source SmbStreamStats.tcl
+set chassis 1
+set card 1
+set port 1
+IxStartPacketGroups $chassis $card $port
+lappend portList [list $chassis $card $port]
+ixStartTransmit portList
+after 10000
+set chassis 1
+set card 2
+set port 1
+IxStartPacketGroups $chassis $card $port
+lappend portList [list $chassis $card $port]
+ixStartTransmit portList
+after 10000
+set chassis 1
+set card 1
+set port 1
+set stats1 [SmbStreamStats $chassis $card $port]
+puts $stats1
+set stats2 [SmbStreamStats $chassis 2 $port]
+puts $stats2
+IxStopPacketGroups $chassis $card $port
+after 10000
+set chassis 1
+set card 2
+set port 1
+IxStopPacketGroups $chassis $card $port
+#SetIGMPv1Group 225.0.0.1 100 JOIN 100 2 1.1.1.1 9999-9999-9999
+#SetIGMPv2Group 225.0.0.1 100 JOIN 100 2 1.1.1.1 9999-9999-9999
